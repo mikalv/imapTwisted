@@ -106,35 +106,36 @@ def loadMetadata(con, name):
     cursor = con.cursor()
     cursor.execute(query)
     results = cursor.fetchone()
-    uidValidity = results[0]
-    uidNext = results[1]
-    metadata["uid_validity"] = uidValidity
-    metadata["uid_next"] = uidNext
-    metadata["uids"] = {}
-    metadata["flags"] = {}
-    query = """
-        SELECT uid
-        FROM imap_mail_message
-        WHERE name_mail_box = %s
-        """ % name
-    cursor.execute(query)
-    results = cursor.fetchall()
-    metadata["uids"][name] = []
-    for uid in results:
-        metadata["uids"][name].append(uid)
+    if results:
+        uidValidity = results[0]
+        uidNext = results[1]
+        metadata["uid_validity"] = uidValidity
+        metadata["uid_next"] = uidNext
+        metadata["uids"] = {}
+        metadata["flags"] = {}
         query = """
-            SELECT name
-            FROM imap_flags
-            WHERE id_flag = (
-                SELECT id_flag
-                FROM imap_meta_flags
-                WHERE uid = %d
-            )""" % uid
+            SELECT uid
+            FROM imap_mail_message
+            WHERE name_mail_box = %s
+            """ % name
         cursor.execute(query)
-        results2 = cursor.fetchall()
-        metadata["flags"][uid] = []
-        for flag in results2:
-            metadata["flags"][uid].append(flag)
+        results = cursor.fetchall()
+        metadata["uids"][name] = []
+        for uid in results:
+            metadata["uids"][name].append(uid)
+            query = """
+                SELECT name
+                FROM imap_flags
+                WHERE id_flag = (
+                    SELECT id_flag
+                    FROM imap_meta_flags
+                    WHERE uid = %d
+                )""" % uid
+            cursor.execute(query)
+            results2 = cursor.fetchall()
+            metadata["flags"][uid] = []
+            for flag in results2:
+                metadata["flags"][uid].append(flag)
 
     return metadata
 
@@ -145,9 +146,9 @@ def getNameAllBoxes(con):
     SELECT name_mail_box
     FROM imap_mail_box
     """
-
+   cursor = con.cursor()
    cursor.execute(query)
-   results = cursos.fetchall()
+   results = cursor.fetchall()
    for name in results:
         listNameBoxes.append(name)
 

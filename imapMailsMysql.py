@@ -19,20 +19,21 @@ class imapMailsMysql(object):
         self.getNamedBox(avatarId, create = True)
         
     def getNamedBox(self, nameBox, create = False):
-        self.nameBox = nameBox
+        print "nameBox: %r" % nameBox
         if nameBox.lower() == "inbox":
             nameBox = self.avatarId
         
         if not self.mailBoxCache.has_key(nameBox):
             createBox(self.con, nameBox)
-            self.mailBoxCache[nameBox] = self.specMessages.getMailBoxMessages(self.nameBox)
+            self.mailBoxCache[nameBox] = self.specMessages.getMailBoxMessages(nameBox)
         return self.mailBoxCache[nameBox]
         
     def allBoxes(self):
         boxes = getNameAllBoxes(self.con)
-        for box in boxes:
-            yield box
-        
+        #for box in boxes:
+        #    yield box
+        return boxes        
+
     def getMailBoxPlus(self, name):
         return MaildirMailboxPlus(self.con, name)
         
