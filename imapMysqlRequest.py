@@ -23,8 +23,7 @@ def createBox(con, avatarId):
             return results
         
     param = util.quote(avatarId, "char")
-    uid_validity = random.randint(1000000, 9999999)
-    query = "INSERT INTO imap_mail_box(name, uid_validity, uid_next) VALUES(%s, %d, 1)" % (param, uid_validity)
+    query = "INSERT INTO imap_mail_box(name) VALUES(%s)" % (param)
     results = con.runOperation(query)
     results.addCallback(gotResult)
     
@@ -53,8 +52,8 @@ def getTupleMail(con, name, index):
             
     index = index - 1
     namedBox = util.quote(con, name, "char")
-    if(index == -1)
-        return get lastTuple(name)
+    if index == -1:
+        return getLastTuple(name)
     query = """
         SELECT id_mail_message
         FROM imap_mail_message
@@ -109,15 +108,18 @@ def loadMetadata(con, name):
 	def gotResults3(results, name, metadata, uid):
 		if results:
 			metadata["flags"][uid] = []
-			for flag in results['name']:
+			flags = results[0]
+			for flag in flags:
 				metadata["flags"][uid].append(name)
-			return results
-		else return metadata
+			return metadata
+		else:
+		    return metadata
 
 	def gotResults2(results, name, metadata):
 		if results:
 			metadata["uids"][name] = []
-			for uid in results['uid']:
+			uids = results[0]
+			for uid in uids:
 				metadata["uids"][name].append(uid)
 				query = """
 					SELECT name
@@ -128,14 +130,14 @@ def loadMetadata(con, name):
 						WHERE uid = %d
 					)""" % uid
 
-				results = self.con.runQuery(query)
-				results.addCallback(gotResult3, name, metadata, uid)
+				results = con.runQuery(query)
+				results.addCallback(gotResults3, name, metadata, uid)
 				return results
 
 	def gotResults1(results, name):
 		if results:
-			uidValidity = results['uid_validity']
-			uidNext = results['uid_next']
+			uidValidity, uidNext = results[0]
+			print "uidValidity: %s" % (uidValidity)
 			metadata = {}
 			metadata["uid_validity"] = uidValidity
 			metadata["uid_next"] = uidNext
@@ -151,15 +153,15 @@ def loadMetadata(con, name):
 			results.addCallback(gotResult2, name, metadata)
 			return results
 
-	name = utils.quote(name, "char")
+	name = util.quote(name, "char")
 	query = """
 		SELECT uid_validity, uid_next
 		FROM imap_mail_box
 		WHERE name_mail_box = %s
 		""" % name
 
-	results = self.con.runQuery(query)
-	results.addCallback(gotResult1, name)
+	results = con.runQuery(query)
+	results.addCallback(gotResults1, name)
 	return results
 
 

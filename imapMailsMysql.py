@@ -41,7 +41,7 @@ class imapMailsMysql(object):
         return MaildirMailboxPlus(self.con, name)
         
     def getMetadata(self, name):
-		metadata = loadMetadata(self.con, name)
+        metadata = loadMetadata(self.con, name)
         return metadata
         
     def getNomMail(self, mailBox):
@@ -83,11 +83,10 @@ class MaildirMailboxPlus(object):
             
     def generator(self):
         value = getTupleMail(self.con, self.name, self.i)
-        while value = getTupleMail(self.con, self.name, self.i):
+        while value:
             yield value
             self.i += 1
             value = getTupleMail(self.con, self.name, self.i)
-        while(value)
         raise StopIteration
         
     def __len__(self):

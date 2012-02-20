@@ -10,6 +10,7 @@ from twisted.enterprise import adbapi, util
 import os, pickle, random, email
 from cStringIO import StringIO
 from imapMailsFile import imapMailsFile
+from imapMailsMysql import imapMailsMysql
 
  
 class userAccount(object):
@@ -87,13 +88,10 @@ PARAM = {
     'passwd': 'password',
     }    
 def getPortal():
-
-    #coreMail = imapMailsFile(pathMailDir)
-
     con = adbapi.ConnectionPool(DRIVER, **PARAM)
     coreMail = imapMailsMysql(con)
-    
-	realm = mailRealm(coreMail)
+
+    realm = mailRealm(coreMail)
     myPortal = portal.Portal(realm)
        
     ###Mysql Credential Checking

@@ -46,13 +46,9 @@ class IMAPMailbox(object):
         #permet de connaitre l'uid du prochain message pour l'incrémentation
         if not self.metadata.has_key("next"):
             self.metadata["next"] = 1
-    
+
     def _assignUids(self):
-		self.coreMail.assignUids(self.mailBox, self.metadata)
-        #for nomMail in self.coreMail.getNomMail(self.mailBox):
-        #    if not self.metadata["uids"].has_key(nomMail):
-        #        self.metadata["uids"][nomMail] = self.metadata["next"]
-        #        self.metadata["next"]+= 1
+        self.coreMail.assignUids(self.mailBox, self.metadata)
         self.saveMetadata(self.metadata, self.nomBoiteMail)
         
     def saveMetadata(self):
