@@ -5,7 +5,6 @@ from zope.interface import implements
 from twisted.cred import checkers, credentials, error
 from twisted.internet import defer
 
-#aaa
 class passwordCredentialChecker(object):
     implements(checkers.ICredentialsChecker)
     credentialInterfaces = (credentials.IUsernamePassword, 
