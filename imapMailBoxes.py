@@ -9,9 +9,8 @@ from twisted.internet import defer
 from twisted.enterprise import adbapi, util
 import os, pickle, random, email
 from cStringIO import StringIO
-from imapMailsFile import imapMailsFile
 from imapMailsMysql import imapMailsMysql
-
+import MySQLdb
  
 class userAccount(object):
     implements(imap4.IAccount)
@@ -88,14 +87,14 @@ PARAM = {
     'passwd': 'password',
     }
 def getPortal():
-    con = adbapi.ConnectionPool(DRIVER, **PARAM)
+    con = MySQLdb.connect("localhost", "root", "password", "imap_db")
     coreMail = imapMailsMysql(con)
 
     realm = mailRealm(coreMail)
     myPortal = portal.Portal(realm)
        
     ###Mysql Credential Checking
-    #con = adbapi.ConnectionPool(DRIVER, **PARAM)
+    con = adbapi.ConnectionPool(DRIVER, **PARAM)
     checker = mysqlCredential.passwordCredentialChecker(con)
     
     myPortal.registerChecker(checker)

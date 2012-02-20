@@ -16,56 +16,54 @@ class imapMailsMysql(object):
         
     def initMaildir(self, avatarId):
         self.avatarId = avatarId
-        #on regarde si le dossier existe:
-        #"/home/greenlamp/Maildir/greenlamp"
-        self.pathMailDirAvatar = os.path.join(self.pathMailDir, avatarId)
-        if not os.path.exists(self.pathMailDirAvatar):
-            #on crée le dossier si il existe pas.
-            os.mkdir(self.pathMailDirAvatar)
+        self.getNamedBox(avatarId, create = True)
         
     def getNamedBox(self, nameBox, create = False):
+        self.nameBox = nameBox
         if nameBox.lower() == "inbox":
-			nameBox = "Inbox"
+            nameBox = "Inbox"
         
-        if not self.mailBoxCache.has_key(NamedBox):
+        if not self.mailBoxCache.has_key(nameBox):
             createBox(self.con, nameBox)
-            self.mailBoxCache[NamedBox] = self.specMessages.getMailBoxMessages(self.pathMailDirBox)
-        return self.mailBoxCache[NamedBox]
+            self.mailBoxCache[nameBox] = self.specMessages.getMailBoxMessages(self.nameBox)
+        return self.mailBoxCache[nameBox]
         
     def allBoxes(self):
-        for box in os.listdir(self.pathMailDirAvatar):
-            print "box: %r" % box
+        boxes = getNameAllBoxes(self.con)
+        for box in boxes:
             yield box
         
     def getMailBoxPlus(self, name):
         return MaildirMailboxPlus(self.con, name)
         
     def getMetadata(self, name):
-        metadata = loadMetadata(self.con, name)
+        metadata = loadMetadata(self.con, name)    
         return metadata
         
     def getNomMail(self, mailBox):
-        for pathSelectedMail in mailBox:
-            nomMail = os.path.basename(pathSelectedMail)
-            yield nomMail
+        for mails in mailBox:
+            yield mails[0]
             
     def saveMetadata(self, metadata):
-        pickle.dump(metadata, file(self.pathMetadataFile, "w+b"))
-        
+        #pickle.dump(metadata, file(self.pathMetadataFile, "w+b"))
+        pass
+
     def getNomMailByPosition(self, mailBox, position):
-        nomMail = os.path.basename(mailBox[position-1])
+        nomMail = mailBox[position-1]
+        nomMail = nomMail[0]
         return nomMail
         
     def getNomMailForFilter(self, pathSelectedMail):
-        nomMail = os.path.basename(pathSelectedMail)
+        nomMail = self.getNomMail(pathSelectedMail)
         return nomMail
         
     def getNomLastMail(self, mailBox):
-        nomMail = os.path.basename(mailBox[-1])
+        nomMail = mailBox[-1]
+        nomMail = nomMail[0]
         return nomMail
     
-    def delMessage(self, mailBox):
-            mailbox.deleteMessage(pathSelectedMail)
+    def delMessage(self, mailBox, id_mail):
+        mailbox.deleteMessage(id_mail)
         
         
         
@@ -73,7 +71,7 @@ class imapMailsMysql(object):
         
 class MaildirMailboxPlus(object):
     #add an iterator to the mailbox.
-    def __init(self, con, name):
+    def __init__(self, con, name):
         self.con = con
         self.name = name
         self.i = 0

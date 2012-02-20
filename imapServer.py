@@ -16,6 +16,9 @@ class imapServerProtocol(imap4.IMAP4Server):
     def sendLine(self, line):
         imap4.IMAP4Server.sendLine(self, line)
         print "envoyé: %r" % line
+
+    def connectonLost(self, reason):
+        pass
     
 class imapServerFactory(protocol.Factory):
     protocol = imapServerProtocol

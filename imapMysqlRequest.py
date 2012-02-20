@@ -18,20 +18,22 @@ def isBoxExists(con, avatarId):
     return results
         
 def createBox(con, avatarId):
-    def gotResult(results):
-        if results:
-            return results
-        
+    cursor = con.cursor()
     param = util.quote(avatarId, "char")
-    query = "INSERT INTO imap_mail_box(name) VALUES(%s)" % (param)
-    results = con.runOperation(query)
-    results.addCallback(gotResult)
-    
+    uidValidity = random.randint(1000000, 9999999)
+    query = """
+        INSERT INTO imap_mail_box(
+        name_mail_box, uid_validity, uid_next) 
+        VALUES(%s, %d, 1)""" % (param, uidValidity)
+    try:
+        cursor.execute(query)
+    except:
+        print "box déja existante"
+
+
+
 def getLastTuple(con, name):
-    def gotResult(results):
-        if results:
-            return results
-            
+    name = util.quote(name, "char")
     query = """
         SELECT id_mail_message
         FROM imap_mail_message
@@ -40,130 +42,116 @@ def getLastTuple(con, name):
             FROM imap_mail_message
             WHERE name_mail_box = %s
         )""" % name
-    results = self.con.runQuery(query)
-    results.addCallback(gotResult)
+    cursor = con.cursor()
+    cursor.execute(query)
+    results = cursor.fetchone()
     return results
     
-    
 def getTupleMail(con, name, index):
-    def gotResult(results):
-        if results:
-            return results
-            
     index = index - 1
-    namedBox = util.quote(con, name, "char")
+    name = util.quote(name, "char")
     if index == -1:
-        return getLastTuple(name)
+        return getLastTuple(con, name)
     query = """
         SELECT id_mail_message
         FROM imap_mail_message
         WHERE name_mail_box = %s
         LIMIT %d, 1""" % (name, index)
-    results = self.con.runQuery(query)
-    results.addCallback(gotResult)
+    cursor = con.cursor()
+    cursor.execute(query)
+    results = cursor.fetchone()
     return results
-    
+
 def nbTupleMail(con, name):
-    def gotResult(results):
-        return results
-        
-    namedBox = util.quote(namedBox, "char")
+    name = util.quote(name, "char")
     query = """
         SELECT count(*) 
         FROM imap_mail_message 
         WHERE name_mail_box = %s
         """ % name
-    results = self.con.runQuery(query)
-    results.addCallback(gotResult)
-    return results
-    
-def delTupleMail(con, name, id_mail):
-    def gotDeleted(results):
-        if results:
-            return results
-            
-    def gotResultSelect(results):
-        if results:
-            query = """
-                UPDATE imap_mail_message
-                SET deleted = 1
-                WHERE id = %d
-                """ % results
-        results = self.con.runQuery(query)
-        results.addCallback(gotDeleted, namedBox)
-        return results
+    print "query: %s" % query
+    cursor = con.cursor()
+    cursor.execute(query)
+    results = cursor.fetchone()
+    return results[0]
+
         
-    namedBox = util.quote(namedBox, "char")
+def delTupleMail(con, name, id_mail):
+    name = util.quote(name, "char")
     query = """
         SELECT id_mail_message
         FROM imap_mail_message
         WHERE name_mail_box = %s
         AND id_mail_message = %d
-        """ % (namedBox, id_mail)
-    results = self.con.runQuery(query)
-    results.addCallback(gotResultSelect)
-    return results
+        """ % (name, id_mail)
+    cursor = con.cursor()
+    cursor.execute(query)
+    results = cursor.fetchone()
+    query = """
+        UPDATE imap_mail_message
+        SET deleted = 1
+        WHERE id_mail_message = %d
+        """ % results[0]
+    cursor.execute(query)
 
 def loadMetadata(con, name):
-	def gotResults3(results, name, metadata, uid):
-		if results:
-			metadata["flags"][uid] = []
-			flags = results[0]
-			for flag in flags:
-				metadata["flags"][uid].append(name)
-			return metadata
-		else:
-		    return metadata
+    name = util.quote(name, "char")
+    query = """
+        SELECT uid_validity, uid_next
+        FROM imap_mail_box
+        WHERE name_mail_box = %s
+        """ % name
 
-	def gotResults2(results, name, metadata):
-		if results:
-			metadata["uids"][name] = []
-			uids = results[0]
-			for uid in uids:
-				metadata["uids"][name].append(uid)
-				query = """
-					SELECT name
-					FROM imap_flags
-					WHERE id_flag = (
-						SELECT id_flag
-						FROM imap_meta_flags
-						WHERE uid = %d
-					)""" % uid
+    metadata = {}   
+    cursor = con.cursor()
+    cursor.execute(query)
+    results = cursor.fetchone()
+    uidValidity = results[0]
+    uidNext = results[1]
+    metadata["uid_validity"] = uidValidity
+    metadata["uid_next"] = uidNext
+    metadata["uids"] = {}
+    metadata["flags"] = {}
+    query = """
+        SELECT uid
+        FROM imap_mail_message
+        WHERE name_mail_box = %s
+        """ % name
+    cursor.execute(query)
+    results = cursor.fetchall()
+    metadata["uids"][name] = []
+    for uid in results:
+        metadata["uids"][name].append(uid)
+        query = """
+            SELECT name
+            FROM imap_flags
+            WHERE id_flag = (
+                SELECT id_flag
+                FROM imap_meta_flags
+                WHERE uid = %d
+            )""" % uid
+        cursor.execute(query)
+        results2 = cursor.fetchall()
+        metadata["flags"][uid] = []
+        for flag in results2:
+            metadata["flags"][uid].append(flag)
 
-				results = con.runQuery(query)
-				results.addCallback(gotResults3, name, metadata, uid)
-				return results
+    return metadata
 
-	def gotResults1(results, name):
-		if results:
-			uidValidity, uidNext = results[0]
-			print "uidValidity: %s" % (uidValidity)
-			metadata = {}
-			metadata["uid_validity"] = uidValidity
-			metadata["uid_next"] = uidNext
-			metadata["uids"] = {}
-			metadata["flags"] = {}
-			query = """
-				SELECT uid
-				FROM imap_mail_message
-				WHERE name_mail_box = %s
-				""" % name
+def getNameAllBoxes(con):
+   listNameBoxes = []
 
-			results = self.con.runQuery(query)
-			results.addCallback(gotResult2, name, metadata)
-			return results
+   query = """
+    SELECT name_mail_box
+    FROM imap_mail_box
+    """
 
-	name = util.quote(name, "char")
-	query = """
-		SELECT uid_validity, uid_next
-		FROM imap_mail_box
-		WHERE name_mail_box = %s
-		""" % name
+   cursor.execute(query)
+   results = cursos.fetchall()
+   for name in results:
+        listNameBoxes.append(name)
 
-	results = con.runQuery(query)
-	results.addCallback(gotResults1, name)
-	return results
-
+   return listNameBoxes
 
 
 

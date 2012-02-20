@@ -25,7 +25,7 @@ class IMAPMailbox(object):
         self.metadata = self.coreMail.getMetadata(self.name)
         self.listeners = []
         self.initMetadata()
-        self._assignUids()
+        #self._assignUids()
             
     def initMetadata(self):
         #permet d'identifier de maniere unique un mail
@@ -48,9 +48,10 @@ class IMAPMailbox(object):
             self.metadata["next"] = 1
 
     def _assignUids(self):
-        self.coreMail.assignUids(self.mailBox, self.metadata)
-        self.saveMetadata(self.metadata, self.nomBoiteMail)
-        
+        #self.coreMail.assignUids(self.mailBox, self.metadata)
+        #self.saveMetadata(self.metadata, self.nomBoiteMail)
+        pass
+
     def saveMetadata(self):
         self.coreMail.saveMetadata(self.metadata)
         
@@ -105,10 +106,10 @@ class IMAPMailbox(object):
     def addMessage(self, message, flags=None, date=None):
         if flags == None:
             flags = []
-        return self.mailBox.appendMessage(message).addCallback(self._addSuccess, flags)
+        #return self.mailBox.appendMessage(message).addCallback(self._addSuccess, flags)
      
     def _addSuccess(self, _, flags):
-        self._assignUids()
+        #self._assignUids()
         nomMail = self.coreMail.getNomLastMail(self.mailBox)
         uids = self.metadata["uids"][nomMail]
         self.metadata["flags"][uids] = flags
@@ -188,7 +189,7 @@ class IMAPMailbox(object):
                     elif mode == -1 and flagPresent.count(flag):
                         flagPresent.remove(flag)
             seqFlag[pos] = flagPresent
-        self.saveMetadata()
+        #self.saveMetadata()
         return seqFlag
         
     def getFlags(self):
