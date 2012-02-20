@@ -21,7 +21,7 @@ class imapMailsMysql(object):
     def getNamedBox(self, nameBox, create = False):
         self.nameBox = nameBox
         if nameBox.lower() == "inbox":
-            nameBox = "Inbox"
+            nameBox = self.avatarId
         
         if not self.mailBoxCache.has_key(nameBox):
             createBox(self.con, nameBox)
