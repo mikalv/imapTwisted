@@ -1,0 +1,6 @@
+- Modifier pour lire les metadata directement en base de donéne et non 
+    plus dans le dict metadata.
+- Reecrire une sous lib pour mysql permettant de faire des requetes 
+    facilement et traiter les valeurs de retour facilement.
+- simplifier le code + le rendre plus lisible
+- regler le probleme de tuple a la place de string là ou il ne devrait pas.
