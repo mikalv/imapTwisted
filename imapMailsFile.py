@@ -79,7 +79,8 @@ class imapMailsFile(object):
     def delMessage(self, mailBox):
             mailbox.deleteMessage(pathSelectedMail)
         
-        
+    def getMailMessage(fileMail, uidMail, flags):
+        return MailMessage(fileMail, uidMail, flags)         
         
         
         
@@ -98,3 +99,58 @@ class MaildirMailboxPlus(maildir.MaildirMailbox):
         position = self.list.index(name)
         os.remove(name)
         del(self.list[position])
+
+
+class MailMessagePart(object):
+    implements(imap4.IMessagePart)
+    
+    def __init__(self, mimeMessage):
+        self.mimeMessage = mimeMessage
+        self.mail = str(self.mimeMessage)
+    
+    def getHeaders(self, negate, *names):
+        headers = {}
+        
+        #si pas de names, on met tout le header dans names
+        if not names:
+            names = self.mimeMessage.keys()
+        if negate:
+            for header in self.mimeMessage.keys():
+                if header.upper() not in names:
+                    headers[header.lower()] = self.mimeMessage.get(header, "")
+        else:
+            for name in names:
+                headers[name] = self.mimeMessage.get(name, "")
+                
+        return headers
+        
+    def getBodyFile(self):
+        body = str(self.mimeMessage.get_payload())
+        return StringIO(body)
+    
+    def getSize(self):
+        return len(self.mail)
+    
+    def isMultipart(self):
+        return self.mimeMessage.is_multipart()
+    
+    def getSubPart(self, part):
+        return MailMessagePart(self.mimeMessage.get_payload())
+    
+class MailMessage(MailMessagePart):
+    implements(imap4.IMessage)
+    
+    def __init__(self, mail, uid, flags):
+        self.mail = mail
+        self.uid = uid
+        self.flags = flags
+        self.mimeMessage = email.message_from_string(self.mail)
+    
+    def getUID(self):
+        return self.uid
+    
+    def getFlags(self):
+        return self.flags
+        
+    def getInternalDate(self):
+        return self.mimeMessage.get("Date", "")

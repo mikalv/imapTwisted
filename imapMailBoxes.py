@@ -47,6 +47,7 @@ class userAccount(object):
         
     def listMailboxes(self, ref, wildcard):
         for box in self.coreMail.allBoxes():
+            print "box: %r" % box
             yield box, self.coreMail.getNamedBox(box)
 
 class mailRealm(object):

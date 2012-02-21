@@ -3,6 +3,9 @@
 from twisted.enterprise import adbapi, util
 from twisted.internet import defer
 import sys, random
+from email.mime.multipart import MIMEMultipart
+from email.parser import Parser
+from email.mime.text import MIMEText
 
 def isBoxExists(con, avatarId):     
     def gotResult(results):
@@ -12,7 +15,11 @@ def isBoxExists(con, avatarId):
             return False   
              
     param = util.quote(avatarId, "char")
-    query = "SELECT name from imap_mail_box where name_mail_box = %r" % avatarId
+    query = """
+        SELECT name 
+        FROM imap_mail_box 
+        where name_mail_box = %r
+        """ % avatarId
     results = self.con.runQuery(query)
     results.addCallback(gotResult)
     return results
@@ -45,6 +52,8 @@ def getLastTuple(con, name):
     cursor = con.cursor()
     cursor.execute(query)
     results = cursor.fetchone()
+    results = str(results[0])
+    results = int(results)
     return results
     
 def getTupleMail(con, name, index):
@@ -60,6 +69,8 @@ def getTupleMail(con, name, index):
     cursor = con.cursor()
     cursor.execute(query)
     results = cursor.fetchone()
+    results = str(results[0])
+    results = int(results)
     return results
 
 def nbTupleMail(con, name):
@@ -69,7 +80,6 @@ def nbTupleMail(con, name):
         FROM imap_mail_message 
         WHERE name_mail_box = %s
         """ % name
-    print "query: %s" % query
     cursor = con.cursor()
     cursor.execute(query)
     results = cursor.fetchone()
@@ -87,11 +97,13 @@ def delTupleMail(con, name, id_mail):
     cursor = con.cursor()
     cursor.execute(query)
     results = cursor.fetchone()
+    results = str(results[0])
+    results = int(results)
     query = """
         UPDATE imap_mail_message
         SET deleted = 1
         WHERE id_mail_message = %d
-        """ % results[0]
+        """ % results
     cursor.execute(query)
 
 def loadMetadata(con, name):
@@ -119,10 +131,13 @@ def loadMetadata(con, name):
             WHERE name_mail_box = %s
             """ % name
         cursor.execute(query)
-        results = cursor.fetchall()
-        metadata["uids"][name] = []
-        for uid in results:
-            metadata["uids"][name].append(uid)
+        results2 = cursor.fetchall()
+        namePar = name[1:-1]
+        metadata["uids"][namePar] = []
+        for uid in results2:
+            uid = str(uid[0])
+            uid = int(uid)
+            metadata["uids"][namePar].append(uid)
             query = """
                 SELECT name
                 FROM imap_flags
@@ -132,9 +147,9 @@ def loadMetadata(con, name):
                     WHERE uid = %d
                 )""" % uid
             cursor.execute(query)
-            results2 = cursor.fetchall()
+            results3 = cursor.fetchall()
             metadata["flags"][uid] = []
-            for flag in results2:
+            for flag in results3:
                 metadata["flags"][uid].append(flag)
 
     return metadata
@@ -155,11 +170,59 @@ def getNameAllBoxes(con):
    return listNameBoxes
 
 
+def getMessageAsMail(con, idMail):
+    query = """
+        SELECT *
+        FROM imap_mail_message
+        WHERE id_mail_message = %d
+        """ % idMail
 
+    cursor = con.cursor()
+    cursor.execute(query)
+    results = cursor.fetchone()
+    mail = MIMEMultipart('related')
+    res = {}
 
+    res["from"] = results[1]
+    res["to"] = results[2]
+    res["subject"] = results[3]
+    res["date"] = results[4]
+    res["contentType"] = results[5]
+    res["content"] = results[6]
 
+    mail["To"] = res["to"]
+    mail["From"] = res["from"]
+    mail["Subject"] = res["subject"]
+    mail["Date"] = res["date"]
 
+    body = MIMEText(res["content"], 'plain')
 
+    mail.attach(body)
+    return mail
 
+def getUidWithId(con, idMail):
+    query = """
+        SELECT uid
+        FROM imap_mail_message
+        WHERE id_mail_message = %d
+        """ % idMail
+    cursor = con.cursor()
+    cursor.execute(query)
+    results = cursor.fetchone()
+    results = str(results[0])
+    results = int(results)
+    return results
 
-
+def getFlagsWithUid(con, uid):
+    query = """
+        SELECT name
+        FROM imap_flags
+        WHERE id_flag IN(
+            SELECT id_flag
+            FROM imap_meta_flags
+            WHERE uid = %d)
+        """ % uid
+    cursor = con.cursor()
+    cursor.execute(query)
+    results = cursor.fetchall()
+    return results

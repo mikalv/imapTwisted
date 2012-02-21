@@ -11,11 +11,11 @@ from imapMailBoxes import getPortal
 class imapServerProtocol(imap4.IMAP4Server):
     def lineReceived(self, line):
         imap4.IMAP4Server.lineReceived(self, line)
-        print "reçu: %r" % line
+        #print "reçu: %r" % line
     
     def sendLine(self, line):
         imap4.IMAP4Server.sendLine(self, line)
-        print "envoyé: %r" % line
+        #print "envoyé: %r" % line
 
     def connectonLost(self, reason):
         pass

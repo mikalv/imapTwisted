@@ -62,8 +62,7 @@ class IMAPMailbox(object):
         return self.metadata["next"]
         
     def getUID(self, num):
-        nomMail = self.coreMail.getNomMailByPosition(self.mailBox, num)
-        return self.metadata["uids"].get(nomMail)
+        return self.metadata["uids"].get(self.name)[num]
         
     def getMessageCount(self):
         #on a surcharger MaildirMailbox
@@ -71,9 +70,8 @@ class IMAPMailbox(object):
         
     def getRecentCount(self):
         def recent(criteria):
-            nomMail = self.coreMail.getNomMailForFilter(criteria)
-            uid = self.metadata["uids"].get(nomMail)
-            flags = self.metadata["flags"].get(uid, [])
+            uid = self.coreMail.getUidWithId(criteria)
+            flags = self.coreMail.getFlagsWithUid(uid)
             
             if r"\Recent" in flags:
                 return True
@@ -135,9 +133,8 @@ class IMAPMailbox(object):
         if not messageSet.last:
             messageSet.last = len(self.mailBox)
         allUids = []
-        for pathSelectedMail in self.mailBox:
-            nomMail = os.path.basename(pathSelectedMail)
-            uid = self.metadata["uids"][nomMail]
+        for i in range(len(self.mailBox)):
+            uid = self.metadata["uids"][self.name][i]
             allUids.append(uid)
         seq = {}
         for uid in messageSet:
@@ -151,6 +148,8 @@ class IMAPMailbox(object):
             messageSet.last = self.metadata['next']
         seq = {}
         for pos in messageSet:
+            pos = str(pos)
+            pos = int(pos)
             seq[pos] = self.mailBox[pos-1]
         return seq
         
@@ -159,11 +158,13 @@ class IMAPMailbox(object):
             sequence = self.getSeqWithUids(messages)
         else:
             sequence = self.getSeqsWithPos(messages)
-          
-        for pos, nomMail in sequence.items():
+        for idM, pos in sequence.items():
+            pos = str(pos)
+            pos = int(pos)
             uidMail = self.getUID(pos)
             flags = self.metadata["flags"].get(uidMail, [])
-            yield pos, MailMessage(file(nomMail).read(), uidMail, flags)
+            mailMessage = self.coreMail.getMailMessage(idM, uidMail, flags)
+            yield pos, mailMessage
         
         
     def store(self, messages, flags, mode, uid):
@@ -199,56 +200,3 @@ class IMAPMailbox(object):
         return "."
     
 
-class MailMessagePart(object):
-    implements(imap4.IMessagePart)
-    
-    def __init__(self, mimeMessage):
-        self.mimeMessage = mimeMessage
-        self.mail = str(self.mimeMessage)
-    
-    def getHeaders(self, negate, *names):
-        headers = {}
-        
-        #si pas de names, on met tout le header dans names
-        if not names:
-            names = self.mimeMessage.keys()
-        if negate:
-            for header in self.mimeMessage.keys():
-                if header.upper() not in names:
-                    headers[header.lower()] = self.mimeMessage.get(header, "")
-        else:
-            for name in names:
-                headers[name] = self.mimeMessage.get(name, "")
-                
-        return headers
-        
-    def getBodyFile(self):
-        body = str(self.mimeMessage.get_payload())
-        return StringIO(body)
-    
-    def getSize(self):
-        return len(self.mail)
-    
-    def isMultipart(self):
-        return self.mimeMessage.is_multipart()
-    
-    def getSubPart(self, part):
-        return MailMessagePart(self.mimeMessage.get_payload())
-    
-class MailMessage(MailMessagePart):
-    implements(imap4.IMessage)
-    
-    def __init__(self, mail, uid, flags):
-        self.mail = mail
-        self.uid = uid
-        self.flags = flags
-        self.mimeMessage = email.message_from_string(self.mail)
-    
-    def getUID(self):
-        return self.uid
-    
-    def getFlags(self):
-        return self.flags
-        
-    def getInternalDate(self):
-        return self.mimeMessage.get("Date", "")
