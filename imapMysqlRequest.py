@@ -215,12 +215,21 @@ def getUidWithId(con, idMail):
     results = int(results)
     return results
 
-def getIdWithUid(con, uid):
+def getIdWithUid(con, name, uid):
     query = """
-        SELECT id_mail_message
+        SELECT uid
         FROM imap_mail_message
-        WHERE uid = %d
-        """ % uid
+        WHERE uid IN(
+            SELECT uid
+            FROM imap_meta_uids
+            WHERE uid_validity =(
+                SELECT uid_validity
+                FROM imap_mail_box
+                WHERE name_mail_box = %s
+                )
+            )
+        AND uid = %d
+        """ % (name, uid)
     cursor = con.cursor()
     cursor.execute(query)
     results = cursor.fetchone()
@@ -228,15 +237,25 @@ def getIdWithUid(con, uid):
     results = int(results)
     return results
 
-def getFlagsWithUid(con, uid):
+def getFlagsWithUid(con, name, uid):
     query = """
         SELECT name
         FROM imap_flags
         WHERE id_flag IN(
             SELECT id_flag
             FROM imap_meta_flags
-            WHERE uid = %d)
-        """ % uid
+            WHERE uid IN(
+                SELECT uid
+                FROM imap_meta_uids
+                WHERE uid_validity=(
+                    SELECT uid_validity
+                    FROM imap_mail_box
+                    WHERE name_mail_box = %s
+                )
+                AND uid = %d
+            )
+        )
+        """ % (name, uid)
     cursor = con.cursor()
     cursor.execute(query)
     results = cursor.fetchall()
@@ -294,16 +313,19 @@ def getUID(con, name, index):
     if index == -1:
         return getUIDlast(con, name)
     else:
-        uidValidity = getUIDValidityWithName(con, name)
         query = """
             SELECT uid
             FROM imap_mail_message
             WHERE uid in(
                 SELECT uid
                 FROM imap_meta_uids
-                WHERE uid_validity = %d)
+                WHERE uid_validity =(
+                    SELECT uid_validity
+                    FROM imap_mail_box
+                    WHERE name_mail_box = %s
+            )
             LIMIT %d,1
-            """ % (uidValidity, index)
+            """ % (name, index)
         cursor = con.cursor()
         cursor.execute(query)
         results = cursor.fetchone()
@@ -344,7 +366,6 @@ def nbTupleFilter(con, name, flag=None):
              
 def getPosWithId(con, idMail):
     return 1
-
 
 
 

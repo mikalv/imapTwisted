@@ -66,10 +66,10 @@ class IMAPMailbox(object):
  
     def getSequenceWithUids(self, messageSet):
         if not messageSet.last:
-            messageSet.last = self.coreMail.getUid(self.name, 0)
+            messageSet.last = self.coreMail.getUidWithPos(self.name, 0)
         sequence = {}
         for uid in messageSet:
-            idMail = self.coreMail.getIdWithUid(uid)
+            idMail = self.coreMail.getIdWithUid(uid, self.name)
             if idMail:
                 sequence[idMail] = uid
         return sequence
@@ -79,8 +79,8 @@ class IMAPMailbox(object):
             messageSet.last = self.coreMail.getMessageCount(self.name)
         sequence = {}
         for pos in messageSet:
-            uid = self.coreMail.getUid(self.name, pos)
-            idMail = self.coreMail.getIdWithUid(uid)
+            uid = self.coreMail.getUidWithPos(self.name, pos)
+            idMail = self.coreMail.getIdWithUid(uid, self.name)
             sequence[idMail] = uid
         return sequence
 

@@ -74,16 +74,16 @@ class imapMailsMysql(object):
         uid = getUidWithId(self.con, idMail)
         return uid
     
-    def getIdWithUid(self, uid):
-        idMail = getIdWithUid(self.con, uid)
+    def getIdWithUid(self, name, uid):
+        idMail = getIdWithUid(self.con, name, uid)
         return idMail
 
-    def getPosWithId(self, idMail):
-        pos = getPosWithId(self.con, idMail)
+    def getPosWithId(self, name, idMail):
+        pos = getPosWithId(self.con, name, idMail)
         return pos
  
-    def getFlagsWithUid(self, uid):
-        flags = getFlagsWithUid(self.con, uid)
+    def getFlagsWithUid(self, name, uid):
+        flags = getFlagsWithUid(self.con, name, uid)
         return flags        
     
     def getUIDValidity(self, name):
@@ -92,18 +92,18 @@ class imapMailsMysql(object):
     def getUIDNext(self, name):
         return getUIDNext(self.con, name)    
        
-    def getUID(self, name, index):
+    def getUIDWithPos(self, name, index):
         return getUID(self.con, name, index)
     
     def getMessageCount(self, name):
         return nbTupleMail(self.con, name)
 
     def getRecentCount(self, name):
-        return nbTupleFilter(self.con, r"\Recent")
+        return nbTupleFilter(self.con, name, r"\Recent")
 
     def getUnseenCount(self, name):
         nbTuple = nbTupleMail(self.con, name)
-        nbSeen = nbTupleFilter(self.con, r"\Seen")
+        nbSeen = nbTupleFilter(self.con, name, r"\Seen")
         unSeen = nbTuple - nbSeen
         return unSeen
 
