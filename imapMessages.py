@@ -21,71 +21,26 @@ class IMAPMailbox(object):
     def __init__(self, name, coreMail):
         self.name = name
         self.coreMail = coreMail
-        self.mailBox = self.coreMail.getMailBoxPlus(self.name)
-        self.metadata = self.coreMail.getMetadata(self.name)
-        self.listeners = []
-        self.initMetadata()
-        #self._assignUids()
-            
-    def initMetadata(self):
-        #permet d'identifier de maniere unique un mail
-        if not self.metadata.has_key("uids"):
-            #une liste d'uid car il y a plusieurs mail dans la boite
-            self.metadata["uids"] = {}
-            
-        #permet d'identifier de maniere unique la boite mail
-        if not self.metadata.has_key("uidvalidity"):
-            #génération de l'identifiant
-            self.metadata["uidvalidity"] = random.randint(1000000, 9999999)
-            
-        #permet de disposer de plusieurs flag, comme a supprimé, non lu etc
-        if not self.metadata.has_key("flags"):
-            #un dict de flags
-            self.metadata["flags"] = {}
-        
-        #permet de connaitre l'uid du prochain message pour l'incrémentation
-        if not self.metadata.has_key("next"):
-            self.metadata["next"] = 1
-
-    def _assignUids(self):
-        #self.coreMail.assignUids(self.mailBox, self.metadata)
-        #self.saveMetadata(self.metadata, self.nomBoiteMail)
-        pass
-
-    def saveMetadata(self):
-        self.coreMail.saveMetadata(self.metadata)
-        
+        self.listeners = []        
+    
     def getUIDValidity(self):
-        return self.metadata["uidvalidity"]
+        return self.coreMail.getUIDValidity(self.name)
         
     def getUIDNext(self):
-        return self.metadata["next"]
+        return self.coreMail.getUIDNext(self.name)
         
-    def getUID(self, num):
-        return self.metadata["uids"].get(self.name)[num]
+    def getUID(self, index):
+        return self.coreMail.getUID(self.name, index)
         
     def getMessageCount(self):
-        #on a surcharger MaildirMailbox
-        return len(self.mailBox)
+        return self.coreMail.getMessageCount(self.name)
         
     def getRecentCount(self):
-        def recent(criteria):
-            uid = self.coreMail.getUidWithId(criteria)
-            flags = self.coreMail.getFlagsWithUid(uid)
-            
-            if r"\Recent" in flags:
-                return True
-        return len(filter(recent, self.mailBox))
-        
+        return self.coreMail.getRecentCount(self.name)       
+ 
     def getUnseenCount(self):
-        def unseen(where):
-            nomMail = self.coreMail.getNomMailForFilter(where)
-            uid = self.metadata["uids"].get(nomMail)
-            flags = self.metadata["flags"].get(uid, [])
-            if not r"\seen" in flags:
-                return True
-        return len(filter(unseen, self.mailBox))
-        
+        return self.coreMail.getUnseenCount(self.name)
+ 
     def isWriteable(self):
         return True
         
@@ -104,66 +59,41 @@ class IMAPMailbox(object):
     def addMessage(self, message, flags=None, date=None):
         if flags == None:
             flags = []
-        #return self.mailBox.appendMessage(message).addCallback(self._addSuccess, flags)
-     
-    def _addSuccess(self, _, flags):
-        #self._assignUids()
-        nomMail = self.coreMail.getNomLastMail(self.mailBox)
-        uids = self.metadata["uids"][nomMail]
-        self.metadata["flags"][uids] = flags
-        self.saveMetadata()
+        return defer.succeed(self.coreMail.addMessage(self.name, message, flags))
         
     def expunge(self):
-        def toDelete(where):
-            nomMail = self.coreMail.getNomMailForFilter(where)
-            uid = self.metadata["uids"].get(nomMail)
-            flags = self.metadata["flags"].get(uid, [])
-            if r"\Deleted" in flags:
-                return where, uid
-        if not self.isWriteable():
-            raise imap4.ReadOnlyMailbox()
-        else:
-            deletedMessage = []
-            for where, uid in filter(toDelete, self.mailBox):
-                self.coreMail.delMessage(self.mailBox, where)
-                deletedMessage.append(uid)
-            return deletedMessage
-        
-    def getSeqWithUids(self, messageSet):
+        return self.coreMail.expunge(self.name)
+ 
+    def getSequenceWithUids(self, messageSet):
         if not messageSet.last:
-            messageSet.last = len(self.mailBox)
-        allUids = []
-        for i in range(len(self.mailBox)):
-            uid = self.metadata["uids"][self.name][i]
-            allUids.append(uid)
-        seq = {}
+            messageSet.last = self.coreMail.getUid(self.name, 0)
+        sequence = {}
         for uid in messageSet:
-            if uid in allUids:
-                pos = allUids.index(uid)+1
-                seq[pos] = self.mailBox[pos-1]
-        return seq
-        
-    def getSeqsWithPos(self, messageSet):
+            idMail = self.coreMail.getIdWithUid(uid)
+            if idMail:
+                sequence[idMail] = uid
+        return sequence
+
+    def getSequenceWithPos(self, messageSet):
         if not messageSet.last:
-            messageSet.last = self.metadata['next']
-        seq = {}
+            messageSet.last = self.coreMail.getMessageCount(self.name)
+        sequence = {}
         for pos in messageSet:
-            pos = str(pos)
-            pos = int(pos)
-            seq[pos] = self.mailBox[pos-1]
-        return seq
-        
+            uid = self.coreMail.getUid(self.name, pos)
+            idMail = self.coreMail.getIdWithUid(uid)
+            sequence[idMail] = uid
+        return sequence
+
     def fetch(self, messages, uid):
         if uid:
-            sequence = self.getSeqWithUids(messages)
+            sequence = self.getSequenceWithUids(message)
         else:
-            sequence = self.getSeqsWithPos(messages)
-        for idM, pos in sequence.items():
-            pos = str(pos)
-            pos = int(pos)
-            uidMail = self.getUID(pos)
-            flags = self.metadata["flags"].get(uidMail, [])
-            mailMessage = self.coreMail.getMailMessage(idM, uidMail, flags)
+            sequence = self.getSequenceWithPos(message)
+        
+        for idMail, uid in sequence.items():
+            flags = self.coreMail.getFlagsWithUid(uid)
+            mailMessage = self.coreMail.getMailMessage(idMail, uid, flags)
+            pos = self.coreMail.getPosWithId(idMail)
             yield pos, mailMessage
         
         

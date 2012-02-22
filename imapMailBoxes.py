@@ -46,7 +46,8 @@ class userAccount(object):
         raise NotImplementedError
         
     def listMailboxes(self, ref, wildcard):
-        for box in self.coreMail.allBoxes():
+        boxes = self.coreMail.allBoxes()
+        for box in boxes:
             print "box: %r" % box
             yield box, self.coreMail.getNamedBox(box)
 

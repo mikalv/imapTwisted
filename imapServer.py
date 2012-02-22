@@ -7,7 +7,6 @@ from twisted.cred import error
 from zope.interface import implements
 from imapMailBoxes import getPortal
 
-#test olol
 class imapServerProtocol(imap4.IMAP4Server):
     def lineReceived(self, line):
         imap4.IMAP4Server.lineReceived(self, line)

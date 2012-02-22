@@ -83,7 +83,9 @@ def nbTupleMail(con, name):
     cursor = con.cursor()
     cursor.execute(query)
     results = cursor.fetchone()
-    return results[0]
+    results = str(results[0])
+    results = int(results)
+    return results
 
         
 def delTupleMail(con, name, id_mail):
@@ -119,8 +121,8 @@ def loadMetadata(con, name):
     cursor.execute(query)
     results = cursor.fetchone()
     if results:
-        uidValidity = results[0]
-        uidNext = results[1]
+        uidValidity = int(str(results[0]))
+        uidNext = int(str(results[1]))
         metadata["uid_validity"] = uidValidity
         metadata["uid_next"] = uidNext
         metadata["uids"] = {}
@@ -213,6 +215,19 @@ def getUidWithId(con, idMail):
     results = int(results)
     return results
 
+def getIdWithUid(con, uid):
+    query = """
+        SELECT id_mail_message
+        FROM imap_mail_message
+        WHERE uid = %d
+        """ % uid
+    cursor = con.cursor()
+    cursor.execute(query)
+    results = cursor.fetchone()
+    results = str(results[0])
+    results = int(results)
+    return results
+
 def getFlagsWithUid(con, uid):
     query = """
         SELECT name
@@ -226,3 +241,118 @@ def getFlagsWithUid(con, uid):
     cursor.execute(query)
     results = cursor.fetchall()
     return results
+
+def getUIDValidity(con, name):
+    name = util.quote(name, "char")
+    query = """
+        SELECT uid_validity
+        FROM imap_mail_box
+        where name_mail_box = %s
+        """ % name
+    cursor = con.cursor()
+    cursor.execute(query)
+    results = cursor.fetchone()
+    results = str(results[0])
+    results = int(results)
+    return results
+
+def getUIDNext(con, name):
+    name = util.quote(name, "char")
+    query = """
+        SELECT uid_next
+        FROM imap_mail_box
+        where name_mail_box = %s
+        """ % name
+    cursor = con.cursor()
+    cursor.execute(query)
+    results = cursor.fetchone()
+    results = str(results[0])
+    results = int(results)
+    return results
+
+def getUidValidityWithName(con, name):
+    name = util.quote(name, "char")
+    query = """
+        SELECT uid_validity
+        FROM imap_mail_box
+        WHERE name_mail_box = %s
+        """ % name
+    cursor = con.cursor()
+    cursor.execute(query)
+    results = cursor.fetchone()
+    results = str(results[0])
+    results = int(results)
+    return results
+
+def getUIDlast(con, name):
+    idMail = getLastTuple(con, name)
+    uid = getUidWithId(idMail)
+    return uid
+
+def getUID(con, name, index):
+    index -= 1
+    if index == -1:
+        return getUIDlast(con, name)
+    else:
+        uidValidity = getUIDValidityWithName(con, name)
+        query = """
+            SELECT uid
+            FROM imap_mail_message
+            WHERE uid in(
+                SELECT uid
+                FROM imap_meta_uids
+                WHERE uid_validity = %d)
+            LIMIT %d,1
+            """ % (uidValidity, index)
+        cursor = con.cursor()
+        cursor.execute(query)
+        results = cursor.fetchone()
+        results = str(results[0])
+        results = int(results)
+        return results
+
+def nbTupleFilter(con, name, flag=None):
+    if flag == None:
+        return 0
+    else:
+        #recup uidvalidity avec le nom, recup uid avec uidvalidity, 
+        #recup idflag avec flag, compter nbTuple dans metaflags avec uid et idflag
+        query = """
+            SELECT count(*)
+            FROM imap_meta_flags
+            WHERE uid IN(
+                SELECT uid
+                FROM imap_meta_uids
+                WHERE uid_validity =(
+                    SELECT uid_validity
+                    FROM imap_mail_box
+                    WHERE name_mail_box = %s
+                )
+            )
+            AND id_flag =(
+                SELECT id_flag
+                FROM imap_flags
+                WHERE name = %s
+            )
+            """ % (name, flag)
+        cursor = con.cursor()
+        cursor.execute(query)
+        results = cursor.fetchone()
+        results = str(results[0])
+        results = int(results)
+        return results
+             
+def getPosWithId(con, idMail):
+    return 1
+
+
+
+
+
+
+
+
+
+
+
+

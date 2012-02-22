@@ -32,8 +32,7 @@ class imapMailsMysql(object):
         
     def allBoxes(self):
         boxes = getNameAllBoxes(self.con)
-        for box in boxes:
-            yield box
+        return boxes
 
     def getMailBoxPlus(self, name):
         return MaildirMailboxPlus(self.con, name)
@@ -74,12 +73,42 @@ class imapMailsMysql(object):
     def getUidWithId(self, idMail):
         uid = getUidWithId(self.con, idMail)
         return uid
+    
+    def getIdWithUid(self, uid):
+        idMail = getIdWithUid(self.con, uid)
+        return idMail
 
+    def getPosWithId(self, idMail):
+        pos = getPosWithId(self.con, idMail)
+        return pos
+ 
     def getFlagsWithUid(self, uid):
         flags = getFlagsWithUid(self.con, uid)
         return flags        
-        
-        
+    
+    def getUIDValidity(self, name):
+        return getUIDValidity(self.con, name)
+
+    def getUIDNext(self, name):
+        return getUIDNext(self.con, name)    
+       
+    def getUID(self, name, index):
+        return getUID(self.con, name, index)
+    
+    def getMessageCount(self, name):
+        return nbTupleMail(self.con, name)
+
+    def getRecentCount(self, name):
+        return nbTupleFilter(self.con, r"\Recent")
+
+    def getUnseenCount(self, name):
+        nbTuple = nbTupleMail(self.con, name)
+        nbSeen = nbTupleFilter(self.con, r"\Seen")
+        unSeen = nbTuple - nbSeen
+        return unSeen
+
+
+ 
 class MaildirMailboxPlus(object):
     #add an iterator to the mailbox.
     def __init__(self, con, name):
