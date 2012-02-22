@@ -174,7 +174,7 @@ class MailMessagePart(object):
         return results 
         
     def getBodyFile(self):
-        body = str(self.mimeMessage.get_payload()[0])
+        body = str(self.mimeMessage.get_payload())
         return StringIO(body)
     
     def getSize(self):
