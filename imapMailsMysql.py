@@ -22,23 +22,21 @@ class imapMailsMysql(object):
     def getNamedBox(self, nameBox, create = False):
         nameBox = "".join(nameBox)
         if nameBox.lower() == "inbox":
-            nameBox = self.avatarId
-        elif nameBox.lower() == "trash":
-            nameBox = "%s_%s" % (self.avatarId, "Trash")
+            nameBox = "Inbox"
         if not self.mailBoxCache.has_key(nameBox):
-            createBox(self.con, nameBox)
+            createBox(self.con,self.avatarId, nameBox)
             self.mailBoxCache[nameBox] = self.specMessages.getMailBoxMessages(nameBox)
         return self.mailBoxCache[nameBox]
         
     def allBoxes(self):
-        boxes = getNameAllBoxes(self.con)
+        boxes = getNameAllBoxes(self.con, self.avatarId)
         return boxes
 
     def getMailBoxPlus(self, name):
-        return MaildirMailboxPlus(self.con, name)
+        return MaildirMailboxPlus(self.con, name, self.avatarId)
         
     def getMetadata(self, name):
-        metadata = loadMetadata(self.con, name)    
+        metadata = loadMetadata(self.con, name, self.avatarId)    
         return metadata
         
     def getNomMail(self, mailBox):
@@ -75,67 +73,71 @@ class imapMailsMysql(object):
         return uid
     
     def getIdWithUid(self, name, uid):
-        idMail = getIdWithUid(self.con, name, uid)
+        idMail = getIdWithUid(self.con, name, self.avatarId, uid)
         print "idMail: %r" % idMail
         return idMail
 
     def getPosWithId(self, name, idMail):
-        pos = getPosWithId(self.con, name, idMail)
+        pos = getPosWithId(self.con, name, self.avatarId, idMail)
         return pos
  
     def getFlagsWithUid(self, name, uid):
-        flags = getFlagsWithUid(self.con, name, uid)
+        flags = getFlagsWithUid(self.con, name, self.avatarId, uid)
         return flags        
     
     def getUIDValidity(self, name):
-        return getUIDValidity(self.con, name)
+        return getUIDValidity(self.con, name, self.avatarId)
 
     def getUIDNext(self, name):
-        return getUIDNext(self.con, name)    
+        return getUIDNext(self.con, name, self.avatarId)    
        
     def getUidWithPos(self, name, index):
-        return getUID(self.con, name, index)
+        return getUID(self.con, name, self.avatarId, index)
     
     def getMessageCount(self, name):
-        return nbTupleMail(self.con, name)
+        return nbTupleMail(self.con, name, self.avatarId)
 
     def getRecentCount(self, name):
-        return nbTupleFilter(self.con, name, r"\Recent")
+        return nbTupleFilter(self.con, name, self.avatarId, r"\Recent")
 
     def getUnseenCount(self, name):
-        nbTuple = nbTupleMail(self.con, name)
-        nbSeen = nbTupleFilter(self.con, name, r"\Seen")
+        nbTuple = nbTupleMail(self.con, name, self.avatarId)
+        nbSeen = nbTupleFilter(self.con, name, self.avatarId, r"\Seen")
         unSeen = nbTuple - nbSeen
         return unSeen
     def getLastTuple(self, name):
-        return getLastTuple(self.con, name)
+        return getLastTuple(self.con, name, self.avatarId)
+    def addMessage(self, name, message, flags):
+        print "message: "
+        print message
 
 class MaildirMailboxPlus(object):
     #add an iterator to the mailbox.
-    def __init__(self, con, name):
+    def __init__(self, con, name, avatarId):
         self.con = con
         self.name = name
+        self.avatarId = avatarId
         self.i = 0
         
     def __iter__(self):
         return self.generator()
             
     def generator(self):
-        nb = nbTupleMail(self.con, self.name)
+        nb = nbTupleMail(self.con, self.name, self.avatarId)
         while self.i <= nb :
-            value = getTupleMail(self.con, self.name, self.i)
+            value = getTupleMail(self.con, self.name, self.avatarId, self.i)
             yield value
             self.i += 1
         raise StopIteration
         
     def __len__(self):
-        return nbTupleMail(self.con, self.name)
+        return nbTupleMail(self.con, self.name, self.avatarId)
         
     def __getitem__(self, index):
-        return getTupleMail(self.con, self.name, index)
+        return getTupleMail(self.con, self.name, self.avatarId, index)
         
     def deleteMessage(self, id_mail):
-        delTupleMail(self.con, self.name, id_mail)
+        delTupleMail(self.con, self.name, self.avatarId, id_mail)
 
 class MailMessagePart(object):
     implements(imap4.IMessagePart)

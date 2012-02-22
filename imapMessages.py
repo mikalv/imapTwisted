@@ -5,6 +5,7 @@ from twisted.mail import maildir, imap4
 import os, pickle, random, email
 from zope.interface import implements
 from cStringIO import StringIO
+from twisted.internet import defer
 
 class imapMessages(object):
     """Class for messages in mailBoxes"""
