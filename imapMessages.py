@@ -58,9 +58,7 @@ class IMAPMailbox(object):
         self.listeners.remove(listener)
         
     def addMessage(self, message, flags=None, date=None):
-        if flags == None:
-            flags = []
-        return defer.succeed(self.coreMail.addMessage(self.name, message, flags))
+        pass
         
     def expunge(self):
         return self.coreMail.expunge(self.name)
@@ -118,8 +116,8 @@ class IMAPMailbox(object):
             if(mode == 0):
                 flagPresent = self.metadata["flags"][uidMail] = flags
             else:
-                #Recupere le tableau de flag, et si il existe pas, le préparer a
-                # en recevoir un
+                #Recupere le tableau de flag, et si il existe pas, le 
+                # préparer à en recevoir un
                 flagPresent = self.metadata["flags"].setdefault(uidMail, [])
                 for flag in flags:
                     if mode == 1 and not flagPresent.count(flag):
@@ -134,7 +132,12 @@ class IMAPMailbox(object):
         
     def getFlags(self):
         return [
-            r"\seen", r"\Answered", r"\Flagged", r"\Deleted", r"\Draft", r"\Recent"]
+            r"\seen", 
+            r"\Answered", 
+            r"\Flagged", 
+            r"\Deleted", 
+            r"\Draft", 
+            r"\Recent"]
     def getHierarchicalDelimiter(self):
         return "."
     

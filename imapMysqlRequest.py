@@ -80,12 +80,14 @@ def getLastTuple(con, name, avatarId):
                         AND username = %s
                     )
                )
-            )""" % (name, avatarId)
+            )
+            """ % (name, avatarId)
     cursor = con.cursor()
     cursor.execute(query)
     results = cursor.fetchone()
-    results = str(results[0])
-    results = int(results)
+    if results:
+        results = str(results[0])
+        results = int(results)
     return results
     
 def getTupleMail(con, name, avatarId, index):
@@ -236,6 +238,7 @@ def getUidWithId(con, idMail):
 def getIdWithUid(con, name, avatarId, uid):
     name = util.quote(name, "char")
     avatarId = util.quote(avatarId, "char")
+    print "uid: %r, name: %r, avatarId: %r" % (uid, name, avatarId)
     query = """
         SELECT uid
         FROM imap_mail_message
@@ -254,9 +257,8 @@ def getIdWithUid(con, name, avatarId, uid):
     cursor = con.cursor()
     cursor.execute(query)
     results = cursor.fetchone()
-    if results:
-        results = str(results[0])
-        results = int(results)
+    results = str(results[0])
+    results = int(results)
     return results
 
 def getFlagsWithUid(con, name, avatarId, uid):
@@ -395,7 +397,8 @@ def nbTupleFilter(con, name, avatarId, flag=None):
         return 0
     else:
         #recup uidvalidity avec le nom, recup uid avec uidvalidity, 
-        #recup idflag avec flag, compter nbTuple dans metaflags avec uid et idflag
+        #recup idflag avec flag, compter nbTuple dans metaflags avec uid et 
+        # idflag
         flag = util.quote(flag, "char")
         name = util.quote(name, "char")
         avatarId = util.quote(avatarId, "char")
@@ -425,9 +428,6 @@ def nbTupleFilter(con, name, avatarId, flag=None):
         results = int(results)
         return results
              
-def getPosWithId(con, idMail):
-    return 1
-
 
 
 

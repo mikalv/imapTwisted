@@ -23,9 +23,12 @@ class imapMailsMysql(object):
         nameBox = "".join(nameBox)
         if nameBox.lower() == "inbox":
             nameBox = "Inbox"
+        if nameBox.lower() == self.avatarId.lower():
+            create = False
         if not self.mailBoxCache.has_key(nameBox):
             createBox(self.con,self.avatarId, nameBox)
-            self.mailBoxCache[nameBox] = self.specMessages.getMailBoxMessages(nameBox)
+            self.mailBoxCache[nameBox] = self.specMessages.getMailBoxMessages(
+                                            nameBox)
         return self.mailBoxCache[nameBox]
         
     def allBoxes(self):
@@ -35,34 +38,6 @@ class imapMailsMysql(object):
     def getMailBoxPlus(self, name):
         return MaildirMailboxPlus(self.con, name, self.avatarId)
         
-    def getMetadata(self, name):
-        metadata = loadMetadata(self.con, name, self.avatarId)    
-        return metadata
-        
-    def getNomMail(self, mailBox):
-        for mails in mailBox:
-            yield mails[0]
-            
-    def saveMetadata(self, metadata):
-        #pickle.dump(metadata, file(self.pathMetadataFile, "w+b"))
-        pass
-
-    def getNomMailByPosition(self, mailBox, position):
-        nomMail = mailBox[position-1]
-        nomMail = nomMail[0]
-        return nomMail
-        
-    def getNomMailForFilter(self, pathSelectedMail):
-        nomMail = self.getNomMail(pathSelectedMail)
-        return nomMail
-        
-    def getNomLastMail(self, mailBox):
-        nomMail = mailBox[-1]
-        nomMail = nomMail[0]
-        return nomMail
-    
-    def delMessage(self, mailBox, id_mail):
-        mailbox.deleteMessage(id_mail)
                  
     def getMailMessage(self, idMail, uidMail, flags):
         mail = getMessageAsMail(self.con, idMail)
@@ -107,9 +82,6 @@ class imapMailsMysql(object):
         return unSeen
     def getLastTuple(self, name):
         return getLastTuple(self.con, name, self.avatarId)
-    def addMessage(self, name, message, flags):
-        print "message: "
-        print message
 
 class MaildirMailboxPlus(object):
     #add an iterator to the mailbox.
