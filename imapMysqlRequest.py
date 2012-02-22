@@ -216,6 +216,7 @@ def getUidWithId(con, idMail):
     return results
 
 def getIdWithUid(con, name, uid):
+    name = util.quote(name, "char")
     query = """
         SELECT uid
         FROM imap_mail_message
@@ -238,6 +239,7 @@ def getIdWithUid(con, name, uid):
     return results
 
 def getFlagsWithUid(con, name, uid):
+    name = util.quote(name, "char")
     query = """
         SELECT name
         FROM imap_flags
@@ -313,6 +315,7 @@ def getUID(con, name, index):
     if index == -1:
         return getUIDlast(con, name)
     else:
+        name = util.quote(name, "char")
         query = """
             SELECT uid
             FROM imap_mail_message
@@ -323,6 +326,7 @@ def getUID(con, name, index):
                     SELECT uid_validity
                     FROM imap_mail_box
                     WHERE name_mail_box = %s
+                )
             )
             LIMIT %d,1
             """ % (name, index)
@@ -339,6 +343,8 @@ def nbTupleFilter(con, name, flag=None):
     else:
         #recup uidvalidity avec le nom, recup uid avec uidvalidity, 
         #recup idflag avec flag, compter nbTuple dans metaflags avec uid et idflag
+        flag = util.quote(flag, "char")
+        name = util.quote(name, "char")
         query = """
             SELECT count(*)
             FROM imap_meta_flags

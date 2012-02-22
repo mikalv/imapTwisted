@@ -92,7 +92,7 @@ class imapMailsMysql(object):
     def getUIDNext(self, name):
         return getUIDNext(self.con, name)    
        
-    def getUIDWithPos(self, name, index):
+    def getUidWithPos(self, name, index):
         return getUID(self.con, name, index)
     
     def getMessageCount(self, name):
@@ -108,35 +108,6 @@ class imapMailsMysql(object):
         return unSeen
 
 
- 
-class MaildirMailboxPlus(object):
-    #add an iterator to the mailbox.
-    def __init__(self, con, name):
-        self.con = con
-        self.name = name
-        self.i = 0
-        
-    def __iter__(self):
-        return self.generator()
-            
-    def generator(self):
-        nb = nbTupleMail(self.con, self.name)
-        while self.i <= nb :
-            value = getTupleMail(self.con, self.name, self.i)
-            yield value
-            self.i += 1
-        raise StopIteration
-        
-    def __len__(self):
-        return nbTupleMail(self.con, self.name)
-        
-    def __getitem__(self, index):
-        return getTupleMail(self.con, self.name, index)
-        
-    def deleteMessage(self, id_mail):
-        delTupleMail(self.con, self.name, id_mail)
-
-
 class MailMessagePart(object):
     implements(imap4.IMessagePart)
     
@@ -146,19 +117,22 @@ class MailMessagePart(object):
     
     def getHeaders(self, negate, *names):
         headers = {}
-        
-        #si pas de names, on met tout le header dans names
+        result = {}
+        headers["Date"] = self.mimeMessage.get("Date", "")
+        headers["From"] = self.mimeMessage.get("From", "")
+        headers["To"] = self.mimeMessage.get("To", "")
+        headers["Subject"] = self.mimeMessage.get("Subject", "")
         if not names:
-            names = self.mimeMessage.keys()
+            names = headers
         if negate:
-            for header in self.mimeMessage.keys():
-                if header.upper() not in names:
-                    headers[header.lower()] = self.mimeMessage.get(header, "")
+            for key in headers:
+                if key.lower() not in names:
+                   results[key.lower()] = headers[key]
         else:
             for name in names:
-                headers[name] = self.mimeMessage.get(name, "")
-                
-        return headers
+                results[name] = headers[name]
+
+        return results 
         
     def getBodyFile(self):
         body = str(self.mimeMessage.get_payload()[0])

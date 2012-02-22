@@ -80,21 +80,20 @@ class IMAPMailbox(object):
         sequence = {}
         for pos in messageSet:
             uid = self.coreMail.getUidWithPos(self.name, pos)
-            idMail = self.coreMail.getIdWithUid(uid, self.name)
+            idMail = self.coreMail.getIdWithUid(self.name, uid)
             sequence[idMail] = uid
         return sequence
 
     def fetch(self, messages, uid):
         if uid:
-            sequence = self.getSequenceWithUids(message)
+            sequence = self.getSequenceWithUids(messages)
         else:
-            sequence = self.getSequenceWithPos(message)
+            sequence = self.getSequenceWithPos(messages)
         
         for idMail, uid in sequence.items():
-            flags = self.coreMail.getFlagsWithUid(uid)
+            flags = self.coreMail.getFlagsWithUid(self.name, uid)
             mailMessage = self.coreMail.getMailMessage(idMail, uid, flags)
-            pos = self.coreMail.getPosWithId(idMail)
-            yield pos, mailMessage
+            yield idMail, mailMessage
         
         
     def store(self, messages, flags, mode, uid):
