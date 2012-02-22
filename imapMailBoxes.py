@@ -30,21 +30,21 @@ class userAccount(object):
         return self.coreMail.getNamedBox(name)
         
     def delete(self, name):
-        raise NotImplementedError
+        pass
         
     def rename(self, oldname, newname):
-        raise NotImplementedError
+        pass
         
     def isSubscribed(self, name):
         #raise NotImplementedError
         pass
         
     def subscribe(self, name):
-        raise NotImplementedError
-        
+        pass
+
     def unsubscribe(self, name):
-        raise NotImplementedError
-        
+        pass
+
     def listMailboxes(self, ref, wildcard):
         boxes = self.coreMail.allBoxes()
         for box in boxes:

@@ -76,6 +76,7 @@ class imapMailsMysql(object):
     
     def getIdWithUid(self, name, uid):
         idMail = getIdWithUid(self.con, name, uid)
+        print "idMail: %r" % idMail
         return idMail
 
     def getPosWithId(self, name, idMail):
@@ -106,7 +107,35 @@ class imapMailsMysql(object):
         nbSeen = nbTupleFilter(self.con, name, r"\Seen")
         unSeen = nbTuple - nbSeen
         return unSeen
+    def getLastTuple(self, name):
+        return getLastTuple(self.con, name)
 
+class MaildirMailboxPlus(object):
+    #add an iterator to the mailbox.
+    def __init__(self, con, name):
+        self.con = con
+        self.name = name
+        self.i = 0
+        
+    def __iter__(self):
+        return self.generator()
+            
+    def generator(self):
+        nb = nbTupleMail(self.con, self.name)
+        while self.i <= nb :
+            value = getTupleMail(self.con, self.name, self.i)
+            yield value
+            self.i += 1
+        raise StopIteration
+        
+    def __len__(self):
+        return nbTupleMail(self.con, self.name)
+        
+    def __getitem__(self, index):
+        return getTupleMail(self.con, self.name, index)
+        
+    def deleteMessage(self, id_mail):
+        delTupleMail(self.con, self.name, id_mail)
 
 class MailMessagePart(object):
     implements(imap4.IMessagePart)
@@ -117,20 +146,30 @@ class MailMessagePart(object):
     
     def getHeaders(self, negate, *names):
         headers = {}
-        result = {}
-        headers["Date"] = self.mimeMessage.get("Date", "")
-        headers["From"] = self.mimeMessage.get("From", "")
-        headers["To"] = self.mimeMessage.get("To", "")
-        headers["Subject"] = self.mimeMessage.get("Subject", "")
+        results = {}
+        headers["DATE"] = self.mimeMessage.get("Date", "")
+        headers["FROM"] = self.mimeMessage.get("From", "")
+        headers["TO"] = self.mimeMessage.get("To", "")
+        headers["SUBJECT"] = self.mimeMessage.get("Subject", "")
+        #headers["CC"] = None
+        #headers["BCC"] = None
+        #headers["MESSAGE-ID"] = None
+        #headers["PRIORITY"] = None
+        #headers["X-PRIORITY"] = None
+        #headers["REFERENCES"] = None
+        #headers["NEWSGROUPS"] = None
+        #headers["IN-REPLY-TO"] = None
+        #headers["CONTENT-TYPE"] = None
         if not names:
             names = headers
         if negate:
             for key in headers:
-                if key.lower() not in names:
+                if key.upper() not in names:
                    results[key.lower()] = headers[key]
         else:
             for name in names:
-                results[name] = headers[name]
+                if headers.has_key(name):
+                    results[name] = headers[name]
 
         return results 
         

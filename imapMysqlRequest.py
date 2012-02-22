@@ -41,14 +41,28 @@ def createBox(con, avatarId):
 
 def getLastTuple(con, name):
     name = util.quote(name, "char")
-    query = """
-        SELECT id_mail_message
-        FROM imap_mail_message
-        WHERE uid >= ALL(
+    nbTuple = nbTupleMail(con, name)
+    print "nbTuple: %d" % nbTuple
+    print "name: %s" % name
+    if nbTuple == 1:
+        query = """
             SELECT id_mail_message
             FROM imap_mail_message
-            WHERE name_mail_box = %s
-        )""" % name
+            WHERE uid =(
+                SELECT id_mail_message
+                FROM imap_mail_message
+                WHERE name_mail_box = %s
+            )
+            """ % name
+    else:
+        query = """
+            SELECT id_mail_message
+            FROM imap_mail_message
+            WHERE uid >= ALL(
+                SELECT id_mail_message
+                FROM imap_mail_message
+                WHERE name_mail_box = %s
+            )""" % name
     cursor = con.cursor()
     cursor.execute(query)
     results = cursor.fetchone()
@@ -152,6 +166,7 @@ def loadMetadata(con, name):
             results3 = cursor.fetchall()
             metadata["flags"][uid] = []
             for flag in results3:
+                flag = "".join(flag)
                 metadata["flags"][uid].append(flag)
 
     return metadata
@@ -167,6 +182,7 @@ def getNameAllBoxes(con):
    cursor.execute(query)
    results = cursor.fetchall()
    for name in results:
+        name = "".join(name)
         listNameBoxes.append(name)
 
    return listNameBoxes
@@ -182,7 +198,7 @@ def getMessageAsMail(con, idMail):
     cursor = con.cursor()
     cursor.execute(query)
     results = cursor.fetchone()
-    mail = MIMEMultipart('related')
+    #mail = MIMEMultipart('related')
     res = {}
 
     res["from"] = results[1]
@@ -192,14 +208,16 @@ def getMessageAsMail(con, idMail):
     res["contentType"] = results[5]
     res["content"] = results[6]
 
+    mail = MIMEText(res["content"], "plain")
+
     mail["To"] = res["to"]
     mail["From"] = res["from"]
     mail["Subject"] = res["subject"]
     mail["Date"] = res["date"]
 
-    body = MIMEText(res["content"], 'plain')
+    #body = MIMEText(res["content"], 'plain')
 
-    mail.attach(body)
+    #mail.attach(body)
     return mail
 
 def getUidWithId(con, idMail):
@@ -216,6 +234,7 @@ def getUidWithId(con, idMail):
     return results
 
 def getIdWithUid(con, name, uid):
+    print "name: %r, uid: %r" % (name, uid)
     name = util.quote(name, "char")
     query = """
         SELECT uid
@@ -234,8 +253,9 @@ def getIdWithUid(con, name, uid):
     cursor = con.cursor()
     cursor.execute(query)
     results = cursor.fetchone()
-    results = str(results[0])
-    results = int(results)
+    if results:
+        results = str(results[0])
+        results = int(results)
     return results
 
 def getFlagsWithUid(con, name, uid):
@@ -261,7 +281,11 @@ def getFlagsWithUid(con, name, uid):
     cursor = con.cursor()
     cursor.execute(query)
     results = cursor.fetchall()
-    return results
+    retour = []
+    for flag in results:
+        flag = "".join(flag)
+        retour.append(flag)
+    return retour
 
 def getUIDValidity(con, name):
     name = util.quote(name, "char")
@@ -307,7 +331,9 @@ def getUidValidityWithName(con, name):
 
 def getUIDlast(con, name):
     idMail = getLastTuple(con, name)
-    uid = getUidWithId(idMail)
+    uid = getUidWithId(con, idMail)
+    uid = str(uid)
+    uid = int(uid)
     return uid
 
 def getUID(con, name, index):

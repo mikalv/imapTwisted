@@ -66,10 +66,15 @@ class IMAPMailbox(object):
  
     def getSequenceWithUids(self, messageSet):
         if not messageSet.last:
-            messageSet.last = self.coreMail.getUidWithPos(self.name, 0)
+            idMail = self.coreMail.getLastTuple(self.name)
+            messageSet.last = self.coreMail.getUidWithId(idMail)
         sequence = {}
+        print "messageSet:"
+        print messageSet
         for uid in messageSet:
-            idMail = self.coreMail.getIdWithUid(uid, self.name)
+            uid = str(uid)
+            uid = int(uid)
+            idMail = self.coreMail.getIdWithUid(self.name, uid)
             if idMail:
                 sequence[idMail] = uid
         return sequence
@@ -79,9 +84,12 @@ class IMAPMailbox(object):
             messageSet.last = self.coreMail.getMessageCount(self.name)
         sequence = {}
         for pos in messageSet:
+            pos = str(pos)
+            pos = int(pos)
             uid = self.coreMail.getUidWithPos(self.name, pos)
-            idMail = self.coreMail.getIdWithUid(self.name, uid)
-            sequence[idMail] = uid
+            if uid:
+                idMail = self.coreMail.getIdWithUid(self.name, uid)
+                sequence[idMail] = uid
         return sequence
 
     def fetch(self, messages, uid):
@@ -89,7 +97,8 @@ class IMAPMailbox(object):
             sequence = self.getSequenceWithUids(messages)
         else:
             sequence = self.getSequenceWithPos(messages)
-        
+        print "Sequence:"
+        print sequence
         for idMail, uid in sequence.items():
             flags = self.coreMail.getFlagsWithUid(self.name, uid)
             mailMessage = self.coreMail.getMailMessage(idMail, uid, flags)
