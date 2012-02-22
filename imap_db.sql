@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Client: localhost
--- Généré le : Mer 22 Février 2012 à 11:59
+-- Généré le : Mer 22 Février 2012 à 14:16
 -- Version du serveur: 5.1.58
 -- Version de PHP: 5.3.6-13ubuntu3.6
 
@@ -50,39 +50,23 @@ INSERT INTO `imap_flags` (`id_flag`, `name`) VALUES
 --
 
 CREATE TABLE IF NOT EXISTS `imap_mail_box` (
+  `username` varchar(50) NOT NULL,
   `name_mail_box` varchar(50) NOT NULL,
   `uid_validity` int(6) NOT NULL,
   `uid_next` int(6) NOT NULL,
-  PRIMARY KEY (`name_mail_box`)
+  PRIMARY KEY (`username`,`name_mail_box`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 --
 -- Contenu de la table `imap_mail_box`
 --
 
-INSERT INTO `imap_mail_box` (`name_mail_box`, `uid_validity`, `uid_next`) VALUES
-('greenlamp', 125478, 2),
-('greenlamp_Trash', 4517376, 1);
-
--- --------------------------------------------------------
-
---
--- Structure de la table `imap_mail_folder`
---
-
-CREATE TABLE IF NOT EXISTS `imap_mail_folder` (
-  `name_mail_box` varchar(50) NOT NULL,
-  `name` varchar(50) NOT NULL,
-  PRIMARY KEY (`name_mail_box`,`name`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-
---
--- Contenu de la table `imap_mail_folder`
---
-
-INSERT INTO `imap_mail_folder` (`name_mail_box`, `name`) VALUES
-('greenlamp', 'Inbox'),
-('greenlamp', 'Trash');
+INSERT INTO `imap_mail_box` (`username`, `name_mail_box`, `uid_validity`, `uid_next`) VALUES
+('greenlamp', 'Inbox', 125478, 2),
+('greenlamp', 'Trash', 4517376, 1),
+('lanroque', 'Inbox', 987456, 2),
+('lanroque', 'Trash', 654123, 1),
+('greenlamp', 'greenlamp', 5127480, 1);
 
 -- --------------------------------------------------------
 
@@ -99,8 +83,7 @@ CREATE TABLE IF NOT EXISTS `imap_mail_message` (
   `content-type` varchar(100) NOT NULL,
   `content` varchar(500) NOT NULL,
   `uid` int(6) NOT NULL,
-  `deleted` tinyint(4) NOT NULL,
-  `name_mail_box` varchar(50) NOT NULL,
+  `active` tinyint(4) NOT NULL,
   PRIMARY KEY (`id_mail_message`)
 ) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=3 ;
 
@@ -108,9 +91,9 @@ CREATE TABLE IF NOT EXISTS `imap_mail_message` (
 -- Contenu de la table `imap_mail_message`
 --
 
-INSERT INTO `imap_mail_message` (`id_mail_message`, `from`, `to`, `subject`, `date`, `content-type`, `content`, `uid`, `deleted`, `name_mail_box`) VALUES
-(1, 'greenlamp@localhost', 'greenlamp@localhost', 'objet 1', 'Mon, 13 Feb 2012 13:43:53 +0100 (CET)', 'Content-Type: text/html; charset=iso-8859-1', 'ceci est un test de contenu', 1, 0, 'greenlamp'),
-(2, 'greenlamp@localhost', 'greenlamp@localhost', 'objet 2', 'Mon, 13 Feb 2012 13:43:53 +0100 (CET)', 'Content-Type: text/html; charset=iso-8859-1', 'Bonjour à tous !', 2, 0, 'greenlamp');
+INSERT INTO `imap_mail_message` (`id_mail_message`, `from`, `to`, `subject`, `date`, `content-type`, `content`, `uid`, `active`) VALUES
+(1, 'greenlamp@localhost', 'greenlamp@localhost', 'objet 1', 'Mon, 13 Feb 2012 13:43:53 +0100 (CET)', 'Content-Type: text/html; charset=iso-8859-1', 'ceci est un test de contenu', 1, 0),
+(2, 'greenlamp@localhost', 'greenlamp@localhost', 'objet 2', 'Mon, 13 Feb 2012 13:43:53 +0100 (CET)', 'Content-Type: text/html; charset=iso-8859-1', 'Bonjour à tous !', 1, 0);
 
 -- --------------------------------------------------------
 
@@ -149,7 +132,7 @@ CREATE TABLE IF NOT EXISTS `imap_meta_uids` (
 
 INSERT INTO `imap_meta_uids` (`uid_validity`, `uid`) VALUES
 (125478, 1),
-(125478, 2);
+(987456, 2);
 
 -- --------------------------------------------------------
 
