@@ -118,20 +118,18 @@ def getTupleMail(con, name, avatarId, index):
     return results
 
 def nbTupleMail(con, name, avatarId):
+    print "nbTupleMail"
     name = util.quote(name, "char")
     avatarId = util.quote(avatarId, "char")
+    print "name: %s, avatarId: %s" % (name, avatarId)
     query = """
-        SELECT count(*) 
-        FROM imap_mail_message 
-        WHERE uid IN(
-            SELECT uid
-            FROM imap_meta_uids
-            WHERE uid_validity =(
-                SELECT uid_validity
-                FROM imap_mail_box
-                WHERE name_mail_box = %s
-                AND username = %s
-            )
+        SELECT count(uid)
+        FROM imap_meta_uids
+        WHERE uid_validity =(
+            SELECT uid_validity
+            FROM imap_mail_box
+            WHERE name_mail_box = %s
+            AND username = %s
         )
         """ % (name, avatarId)
     cursor = con.cursor()
