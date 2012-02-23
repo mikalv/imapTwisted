@@ -22,16 +22,16 @@ class IMAPMailbox(object):
     def __init__(self, name, coreMail):
         self.name = name
         self.coreMail = coreMail
-        self.listeners = []        
+        self.listeners = []
     
     def getUIDValidity(self):
-        return self.coreMail.getUIDValidity(self.name)
+        return self.coreMail.getIdMailBox(self.name)
         
     def getUIDNext(self):
-        return self.coreMail.getUIDNext(self.name)
+        pass
         
     def getUID(self, index):
-        return self.coreMail.getUID(self.name, index)
+        return self.coreMail.getIdMailMessage(self.name, index)
         
     def getMessageCount(self):
         return self.coreMail.getMessageCount(self.name)
@@ -62,82 +62,85 @@ class IMAPMailbox(object):
         
     def expunge(self):
         return self.coreMail.expunge(self.name)
- 
+
     def getSequenceWithUids(self, messageSet):
         if not messageSet.last:
-            idMail = self.coreMail.getLastTuple(self.name)
-            messageSet.last = self.coreMail.getUidWithId(idMail)
-        sequence = {}
-        print "messageSet:"
-        print messageSet
-        for uid in messageSet:
-            uid = str(uid)
-            uid = int(uid)
-            idMail = self.coreMail.getIdWithUid(self.name, uid)
-            if idMail:
-                sequence[idMail] = uid
-        return sequence
+            messageSet.last = self.coreMail.getLastTuple(self.name) + 1
+            print "messageLastID : "
+            print messageSet.last
 
+        sequence = {}
+        for idMail in messageSet:
+            idMail = int(str(idMail))
+            pos = self.coreMail.getPosWithIdV(self.name, idMail)
+            if pos:
+                sequence[pos] = idMail
+        return sequence
+    
     def getSequenceWithPos(self, messageSet):
         if not messageSet.last:
-            messageSet.last = self.coreMail.getMessageCount(self.name)
+            messageSet.last = self.coreMail.getLastPos(self.name) + 1
+            print "messageLast POS: ;"
+            print messageSet.last
+
         sequence = {}
         for pos in messageSet:
-            pos = str(pos)
-            pos = int(pos)
-            uid = self.coreMail.getUidWithPos(self.name, pos)
-            if uid:
-                idMail = self.coreMail.getIdWithUid(self.name, uid)
-                sequence[idMail] = uid
+            pos = int(str(pos))
+            idMail = self.coreMail.getIdWithPosV(self.name, pos)
+            if idMail:
+                sequence[pos] = idMail
+
         return sequence
 
+        
     def fetch(self, messages, uid):
         if uid:
             sequence = self.getSequenceWithUids(messages)
         else:
             sequence = self.getSequenceWithPos(messages)
-        print "Sequence:"
-        print sequence
-        for idMail, uid in sequence.items():
-            flags = self.coreMail.getFlagsWithUid(self.name, uid)
-            mailMessage = self.coreMail.getMailMessage(idMail, uid, flags)
-            yield idMail, mailMessage
-        
+            
+        for pos, idMail in sequence.items():
+            pos = int(str(pos))
+            idMail = int(str(idMail))
+            flags = self.coreMail.getFlagsWithId(self.name, idMail)
+            mailMessage = self.coreMail.getMailMessage(idMail, flags)
+            yield pos, mailMessage
         
     def store(self, messages, flags, mode, uid):
+        print "messages:"
+        print messages
+        print "flags:"
+        print flags
+        print "mode:"
+        print mode
+        print "uid:"
+        print uid
+        sequence = {}
         if uid:
-            sequence = self.getSeqWithUids(messages)
+            sequence = self.getSequenceWithUids(messages)
         else:
-            sequence = self.getSeqsWithPos(messages)
-            
-        seqFlag = {}
-        for pos, nomMail in sequence.items():
-            uidMail = self.getUID(pos)
-            if(mode == 0):
-                flagPresent = self.metadata["flags"][uidMail] = flags
-            else:
-                #Recupere le tableau de flag, et si il existe pas, le 
-                # préparer à en recevoir un
-                flagPresent = self.metadata["flags"].setdefault(uidMail, [])
+            sequence = self.getSequenceWithPos(messages)
+        for pos, idMail in sequence.items():
+            pos = int(str(pos))
+            idMail = int(str(idMail))
+            if mode == 0:
+                self.coreMail.deleteFlags(self.name, self.idMail)
                 for flag in flags:
-                    if mode == 1 and not flagPresent.count(flag):
-                        #flagPresent a la meme adresse que:
-                        # self.metadata["flags"][uidMail]
-                        flagPresent.append(flag)
-                    elif mode == -1 and flagPresent.count(flag):
-                        flagPresent.remove(flag)
-            seqFlag[pos] = flagPresent
-        #self.saveMetadata()
-        return seqFlag
+                    self.coreMail.addFlag(self.idMail, flag)
+            else:
+                if mode == 1:
+                    for flag in flags:
+                        self.coreMail.addFlag(self.name, self.idMail, flag)
+                elif mode == -1:
+                    for flag in flags:
+                        self.coreMail.deleteFlag(self.name, self.idMail, flag)
+            seq[idMail] = []
+            seq[idMail] = self.coreMail.getFlagsWithId(self.name, idMail)
+        return seq
         
     def getFlags(self):
-        return [
-            r"\seen", 
-            r"\Answered", 
-            r"\Flagged", 
-            r"\Deleted", 
-            r"\Draft", 
-            r"\Recent"]
+        return self.coreMail.getAllFlags()
+        
     def getHierarchicalDelimiter(self):
         return "."
     

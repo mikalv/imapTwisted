@@ -2,84 +2,70 @@
 # -*- coding: iso-8859-1 -*-
 from twisted.enterprise import adbapi, util
 from twisted.internet import defer
-import sys, random
+import sys, random, traceback
 from email.mime.multipart import MIMEMultipart
 from email.parser import Parser
 from email.mime.text import MIMEText
 
-def isBoxExists(con, avatarId):     
-    def gotResult(results):
-        if results:
-            return True
-        else:
-            return False   
-             
-    param = util.quote(avatarId, "char")
-    query = """
-        SELECT name 
-        FROM imap_mail_box 
-        where name_mail_box = %r
-        """ % avatarId
-    results = self.con.runQuery(query)
-    results.addCallback(gotResult)
-    return results
-        
 def createBox(con, avatarId, name):
-    cursor = con.cursor()
+    if not isAlreadyExists(con, name, avatarId):
+        avatarId = util.quote(avatarId, "char")
+        name = util.quote(name, "char")
+        query = """
+            INSERT INTO imap_mail_box(
+            username, name_mail_box)
+            VALUES(%s, %s)""" % (avatarId, name)
+        cursor = con.cursor()
+        try:
+            cursor.execute(query)
+        except Exception:
+            print traceback.print_exc(file=sys.stdout)
+    else:
+        print "box(%s) déja existante" % name
+        
+def isAlreadyExists(con, name, avatarId):
     avatarId = util.quote(avatarId, "char")
     name = util.quote(name, "char")
-    uidValidity = random.randint(1000000, 9999999)
     query = """
-        INSERT INTO imap_mail_box(
-        username, name_mail_box, uid_validity, uid_next) 
-        VALUES(%s, %s, %d, 1)""" % (avatarId, name, uidValidity)
-    try:
-        cursor.execute(query)
-    except:
-        print "box déja existante"
-
-
-
+        SELECT count(*)
+        FROM imap_mail_box
+        WHERE name_mail_box = %s
+        AND username = %s
+        """ % (name, avatarId)
+    cursor = con.cursor()
+    cursor.execute(query)
+    results = cursor.fetchone()
+    results = int(str(results[0]))
+    if results == 0:
+        return False
+    else:
+        return True
+        
 def getLastTuple(con, name, avatarId):
     nbTuple = nbTupleMail(con, name, avatarId)
-    name = util.quote(name, "char")
-    avatarId = util.quote(avatarId, "char")
-    if nbTuple == 1:
-        query = """
-            SELECT id_mail_message
-            FROM imap_mail_message
-            WHERE uid =(
-                SELECT id_mail_message
-                FROM imap_mail_message
-                WHERE uid IN(
-                    SELECT uid
-                    FROM imap_meta_uids
-                    WHERE uid_validity =(
-                        SELECT uid_validity 
-                        FROM imap_mail_box
-                        WHERE name_mail_box = %s
-                        AND username = %s
-                    )
-               )
-            )
-            """ % (name, avatarId)
+    if nbTuple == 0:
+        return None
+    elif nbTuple == 1:
+        return getTupleMail(con, name, avatarId, 1)
     else:
+        name = util.quote(name, "char")
+        avatarId = util.quote(avatarId, "char")
         query = """
             SELECT id_mail_message
             FROM imap_mail_message
-            WHERE uid >= ALL(
+            WHERE id_mail_message >= ALL(
                 SELECT id_mail_message
                 FROM imap_mail_message
-                WHERE uid IN(
-                    SELECT uid
-                    FROM imap_meta_uids
-                    WHERE uid_validity =(
-                        SELECT uid_validity
+                WHERE id_mail_message IN(
+                    SELECT id_mail_message
+                    FROM imap_box_message
+                    WHERE id_mail_box =(
+                        SELECT id_mail_box
                         FROM imap_mail_box
                         WHERE name_mail_box = %s
                         AND username = %s
                     )
-               )
+                )
             )
             """ % (name, avatarId)
     cursor = con.cursor()
@@ -99,17 +85,18 @@ def getTupleMail(con, name, avatarId, index):
     query = """
         SELECT id_mail_message
         FROM imap_mail_message
-        WHERE uid IN(
-            SELECT uid
-            FROM imap_meta_uids
-            WHERE uid_validity =(
-                SELECT uid_validity
+        WHERE id_mail_message IN(
+            SELECT id_mail_message
+            FROM imap_box_message
+            WHERE id_mail_box =(
+                SELECT id_mail_box
                 FROM imap_mail_box
                 WHERE name_mail_box = %s
                 AND username = %s
             )
         )
-        LIMIT %d, 1""" % (name, avatarId, index)
+        LIMIT %d, 1
+        """ % (name, avatarId, index)
     cursor = con.cursor()
     cursor.execute(query)
     results = cursor.fetchone()
@@ -118,15 +105,13 @@ def getTupleMail(con, name, avatarId, index):
     return results
 
 def nbTupleMail(con, name, avatarId):
-    print "nbTupleMail"
     name = util.quote(name, "char")
     avatarId = util.quote(avatarId, "char")
-    print "name: %s, avatarId: %s" % (name, avatarId)
     query = """
-        SELECT count(uid)
-        FROM imap_meta_uids
-        WHERE uid_validity =(
-            SELECT uid_validity
+        SELECT count(*) 
+        FROM imap_box_message 
+        WHERE id_mail_box IN(
+            SELECT id_mail_box
             FROM imap_mail_box
             WHERE name_mail_box = %s
             AND username = %s
@@ -146,11 +131,11 @@ def delTupleMail(con, name, avatarId, id_mail):
     query = """
         SELECT id_mail_message
         FROM imap_mail_message
-        WHERE uid IN(
-            SELECT uid
-            FROM imap_meta_uids
-            WHERE uid_validity =(
-                SELECT uid_validity
+        WHERE id_mail_message IN(
+            SELECT id_mail_message
+            FROM imap_box_message
+            WHERE id_mail_box =(
+                SELECT id_mail_box
                 FROM imap_mail_box
                 WHERE name_mail_box = %s
                 AND username = %s
@@ -165,7 +150,7 @@ def delTupleMail(con, name, avatarId, id_mail):
     results = int(results)
     query = """
         UPDATE imap_mail_message
-        SET deleted = 1
+        SET active = 1
         WHERE id_mail_message = %d
         """ % results
     cursor.execute(query)
@@ -184,7 +169,6 @@ def getNameAllBoxes(con, avatarId):
     for name in results:
          name = "".join(name)
          listNameBoxes.append(name)
-
     return listNameBoxes
 
 
@@ -220,46 +204,7 @@ def getMessageAsMail(con, idMail):
     #mail.attach(body)
     return mail
 
-def getUidWithId(con, idMail):
-    query = """
-        SELECT uid
-        FROM imap_mail_message
-        WHERE id_mail_message = %d
-        """ % idMail
-    cursor = con.cursor()
-    cursor.execute(query)
-    results = cursor.fetchone()
-    results = str(results[0])
-    results = int(results)
-    return results
-
-def getIdWithUid(con, name, avatarId, uid):
-    name = util.quote(name, "char")
-    avatarId = util.quote(avatarId, "char")
-    print "uid: %r, name: %r, avatarId: %r" % (uid, name, avatarId)
-    query = """
-        SELECT uid
-        FROM imap_mail_message
-        WHERE uid IN(
-            SELECT uid
-            FROM imap_meta_uids
-            WHERE uid_validity =(
-                SELECT uid_validity
-                FROM imap_mail_box
-                WHERE name_mail_box = %s
-                AND username = %s
-                )
-            )
-        AND uid = %d
-        """ % (name, avatarId, uid)
-    cursor = con.cursor()
-    cursor.execute(query)
-    results = cursor.fetchone()
-    results = str(results[0])
-    results = int(results)
-    return results
-
-def getFlagsWithUid(con, name, avatarId, uid):
+def getFlagsWithId(con, name, avatarId, idMail):
     name = util.quote(name, "char")
     avatarId = util.quote(avatarId, "char")
     query = """
@@ -267,20 +212,20 @@ def getFlagsWithUid(con, name, avatarId, uid):
         FROM imap_flags
         WHERE id_flag IN(
             SELECT id_flag
-            FROM imap_meta_flags
-            WHERE uid IN(
-                SELECT uid
-                FROM imap_meta_uids
-                WHERE uid_validity=(
-                    SELECT uid_validity
+            FROM imap_message_flag
+            WHERE id_mail_message IN(
+                SELECT id_mail_message
+                FROM imap_box_message
+                WHERE id_mail_box =(
+                    SELECT id_mail_box
                     FROM imap_mail_box
                     WHERE name_mail_box = %s
                     AND username = %s
                 )
-                AND uid = %d
             )
+            AND id_mail_message = %d
         )
-        """ % (name, avatarId, uid)
+        """ % (name, avatarId, idMail)
     cursor = con.cursor()
     cursor.execute(query)
     results = cursor.fetchall()
@@ -290,11 +235,11 @@ def getFlagsWithUid(con, name, avatarId, uid):
         retour.append(flag)
     return retour
 
-def getUIDValidity(con, name, avatarId):
+def getIdMailBox(con, name, avatarId):
     name = util.quote(name, "char")
     avatarId = util.quote(avatarId, "char")
     query = """
-        SELECT uid_validity
+        SELECT id_mail_box
         FROM imap_mail_box
         WHERE name_mail_box = %s
         AND username = %s
@@ -306,76 +251,25 @@ def getUIDValidity(con, name, avatarId):
     results = int(results)
     return results
 
-def getUIDNext(con, name, avatarId):
-    name = util.quote(name, "char")
-    avatarId = util.quote(avatarId, "char")
-    query = """
-        SELECT uid_next
-        FROM imap_mail_box
-        where uid IN(
-            SELECT uid
-            FROM imap_meta_uids
-            WHERE uid_validity =(
-                SELECT uid_validity
-                FROM imap_mail_box
-                WHERE name_mail_box = %s
-                AND username = %s
-            )
-        )
-        """ % (name, avatarId)
-    cursor = con.cursor()
-    cursor.execute(query)
-    results = cursor.fetchone()
-    results = str(results[0])
-    results = int(results)
-    return results
-
-def getUidValidityWithName(con, name, avatarId):
-    name = util.quote(name, "char")
-    avatarId = util.quote(avatarId, "char")
-    query = """
-        SELECT uid_validity
-        FROM imap_mail_box
-        WHERE uid IN(
-            SELECT uid
-            FROM imap_meta_uids
-            WHERE uid_validity =(
-                SELECT uid_validity
-                FROM imap_mail_box
-                WHERE imap_mail_box = %s
-                AND username = %s
-            )
-        )
-        """ % (name, avatarId)
-    cursor = con.cursor()
-    cursor.execute(query)
-    results = cursor.fetchone()
-    results = str(results[0])
-    results = int(results)
-    return results
-
-def getUIDlast(con, name, avatarId):
+def getIdMailMessageLast(con, name, avatarId):
     idMail = getLastTuple(con, name, avatarId)
-    uid = getUidWithId(con, idMail)
-    uid = str(uid)
-    uid = int(uid)
-    return uid
+    return idMail
 
-def getUID(con, name, avatarId, index):
+def getIdMailMessage(con, name, avatarId, index):
     index -= 1
     if index == -1:
-        return getUIDlast(con, name, avatarId)
+        return getIdMailMessageLast(con, name, avatarId)
     else:
         name = util.quote(name, "char")
         avatarId = util.quote(avatarId, "char")
         query = """
-            SELECT uid
+            SELECT id_mail_message
             FROM imap_mail_message
-            WHERE uid in(
-                SELECT uid
-                FROM imap_meta_uids
-                WHERE uid_validity =(
-                    SELECT uid_validity
+            WHERE id_mail_message in(
+                SELECT id_mail_message
+                FROM imap_box_message
+                WHERE id_mail_box =(
+                    SELECT id_mail_box
                     FROM imap_mail_box
                     WHERE name_mail_box = %s
                     AND username = %s
@@ -394,38 +288,180 @@ def nbTupleFilter(con, name, avatarId, flag=None):
     if flag == None:
         return 0
     else:
-        #recup uidvalidity avec le nom, recup uid avec uidvalidity, 
-        #recup idflag avec flag, compter nbTuple dans metaflags avec uid et 
-        # idflag
         flag = util.quote(flag, "char")
         name = util.quote(name, "char")
         avatarId = util.quote(avatarId, "char")
         query = """
-            SELECT count(*)
-            FROM imap_meta_flags
-            WHERE uid IN(
-                SELECT uid
-                FROM imap_meta_uids
-                WHERE uid_validity =(
-                    SELECT uid_validity
+            SELECT id_mail_message
+            FROM imap_message_flag
+            WHERE id_flag =(
+                SELECT id_flag
+                FROM imap_flags
+                WHERE name = %s
+            )
+            AND id_mail_message IN(
+                SELECT id_mail_message
+                FROM imap_box_message
+                WHERE id_mail_box =(
+                    SELECT id_mail_box
                     FROM imap_mail_box
                     WHERE name_mail_box = %s
                     AND username = %s
                 )
             )
-            AND id_flag =(
-                SELECT id_flag
-                FROM imap_flags
-                WHERE name = %s
-            )
-            """ % (name, avatarId, flag)
+        """ % (flag, name, avatarId)
         cursor = con.cursor()
         cursor.execute(query)
         results = cursor.fetchone()
-        results = str(results[0])
-        results = int(results)
+        if results:
+            results = str(results[0])
+            results = int(results)
         return results
-             
+
+def deleteFlags(con, name, avatarId, idMail):
+    query = """
+        DELETE
+        FROM imap_message_flag
+        WHERE id_mail_message IN(
+            SELECT id_mail_message
+            FROM imap_box_message
+            WHERE id_mail_box =(
+                SELECT id_mail_box
+                FROM imap_mail_box
+                WHERE name_mail_box = %s
+                AND username = %s
+            )
+        )
+        AND id_mail_message = %d
+        """ % (name, avatarId, idMail)
+    cursor = con.cursor()
+    cursor.execute(query)
+
+def deleteFlag(con, name, avatarId, idMail, flag):
+    query = """
+        DELETE
+        FROM imap_message_flag
+        WHERE id_mail_message IN(
+            SELECT id_mail_message
+            FROM imap_box_message
+            WHERE id_mail_box =(
+                SELECT id_mail_box
+                FROM imap_mail_box
+                WHERE name_mail_box = %s
+                AND username = %s
+            )
+        )
+        AND id_mail_message = %d
+        AND id_flag =(
+            SELECT id_flag
+            FROM imap_flags
+            WHERE name = %s
+        )
+        """ % (name, avatarId, idMail, flag)
+    cursor = con.cursor()
+    cursor.execute(query)
+        
+def addFlag(con, idMail, flag):
+    query = """
+        INSERT INTO imap_message_flag
+        (id_mail_message, id_flag)
+        VALUES(%d,(
+            SELECT id_flag
+            FROM imap_flags
+            WHERE name = %s
+        ))
+        """ % (idMail, flag)
+    cursor = con.cursor()
+    try:
+        cursor.execute(query)
+    except:
+        print "flag déja présent"
+
+def getAllFlags(con):
+    query = """
+        SELECT name
+        FROM imap_flags
+        """
+    cursor = con.cursor()
+    cursor.execute(query)
+    results = cursor.fetchall()
+    flags = []
+    for flag in results:
+        flag = "".join(flag)
+        flags.append(flag)
+    return flags
+
+def getVirtualTab(con, name, avatarId):
+    #DETAIL
+    #virtual[1]:
+    #{
+    #####'username': 'greenlamp',
+    #####'active': '0',
+    #####'from': 'greenlamp@localhost',
+    #####'name': 'Inbox',
+    #####'content': 'ceci est un test de contenu',
+    #####'to': 'greenlamp@localhost',
+    #####'date': 'Mon, 13 Feb 2012 13:43:53 +0100 (CET)',
+    #####'content-type': 'Content-Type: text/html; charset=iso-8859-1',
+    #####'id': '10',
+    #####'subject': 'Pour gabriel'
+    #}
+
+    virtual = {}
+    pos = 1
+
+    active = 0
+    if name.lower() == "trash":
+        active = 1
+    name = util.quote(name, "char")
+    avatarId = util.quote(avatarId, "char")
+    query = """
+    SELECT *
+    FROM imap_mail_message
+    WHERE id_mail_message IN(
+        SELECT id_mail_message
+        FROM imap_box_message
+        WHERE id_mail_box =(
+            SELECT id_mail_box
+            FROM imap_mail_box
+            WHERE name_mail_box = %s
+            AND username = %s
+        )
+    )
+    AND active = %d
+    """ % (name, avatarId, active)
+    cursor = con.cursor()
+    cursor.execute(query)
+    results = cursor.fetchall()
+    for result in results:
+        virtual[pos] = {}
+        virtual[pos]["id"] = "%d" % result[0]
+        virtual[pos]["from"] = "%s" % result[1]
+        virtual[pos]["to"] = "%s" % result[2]
+        virtual[pos]["subject"] = "%s" % result[3]
+        virtual[pos]["date"] = "%s" % result[4]
+        virtual[pos]["content-type"] = "%s" % result[5]
+        virtual[pos]["content"] = "%s" % result[6]
+        virtual[pos]["active"] = "%d" % result[7]
+        virtual[pos]["name"] = name[1:-1]
+        virtual[pos]["username"] = avatarId[1:-1]
+        pos += 1
+
+    return virtual
+
+def getPosWithIdV(con, name, avatarId, idMail):
+    virtual = getVirtualTab(con, name, avatarId)
+    for i in range(len(virtual)):
+        if idMail == int(str(virtual[i+1]["id"])):
+            return i+1
+
+def getIdWithPosV(con, name, avatarId, pos):
+    virtual = getVirtualTab(con, name, avatarId)
+    if virtual.has_key(pos):
+        return virtual[pos]["id"]
+
+def getLastPos(con, name, avatarId):
+    return len(getVirtualTab(con, name, avatarId))
 
 
 
@@ -435,4 +471,4 @@ def nbTupleFilter(con, name, avatarId, flag=None):
 
 
 
-
+    

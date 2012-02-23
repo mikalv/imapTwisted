@@ -17,18 +17,18 @@ class imapMailsMysql(object):
         
     def initMaildir(self, avatarId):
         self.avatarId = avatarId
-        self.getNamedBox(avatarId, create = True)
         
     def getNamedBox(self, nameBox, create = False):
-        nameBox = "".join(nameBox)
         if nameBox.lower() == "inbox":
             nameBox = "Inbox"
-        if nameBox.lower() == self.avatarId.lower():
-            create = False
         if not self.mailBoxCache.has_key(nameBox):
-            createBox(self.con,self.avatarId, nameBox)
-            self.mailBoxCache[nameBox] = self.specMessages.getMailBoxMessages(
-                                            nameBox)
+            if create:
+                if not isAlreadyExists(self.con, nameBox, self.avatarId):
+                    createBox(self.con,self.avatarId, nameBox)
+                self.mailBoxCache[nameBox] = self.specMessages.getMailBoxMessages(
+                                                nameBox)  
+            else:
+                return None
         return self.mailBoxCache[nameBox]
         
     def allBoxes(self):
@@ -39,9 +39,9 @@ class imapMailsMysql(object):
         return MaildirMailboxPlus(self.con, name, self.avatarId)
         
                  
-    def getMailMessage(self, idMail, uidMail, flags):
+    def getMailMessage(self, idMail, flags):
         mail = getMessageAsMail(self.con, idMail)
-        return MailMessage(mail, uidMail, flags)         
+        return MailMessage(mail, idMail, flags)
         
     def getUidWithId(self, idMail):
         uid = getUidWithId(self.con, idMail)
@@ -49,19 +49,18 @@ class imapMailsMysql(object):
     
     def getIdWithUid(self, name, uid):
         idMail = getIdWithUid(self.con, name, self.avatarId, uid)
-        print "idMail: %r" % idMail
         return idMail
 
     def getPosWithId(self, name, idMail):
         pos = getPosWithId(self.con, name, self.avatarId, idMail)
         return pos
  
-    def getFlagsWithUid(self, name, uid):
-        flags = getFlagsWithUid(self.con, name, self.avatarId, uid)
-        return flags        
+    def getFlagsWithId(self, name, idMail):
+        flags = getFlagsWithId(self.con, name, self.avatarId, idMail)
+        return flags
     
-    def getUIDValidity(self, name):
-        return getUIDValidity(self.con, name, self.avatarId)
+    def getIdMailBox(self, name):
+        return getIdMailBox(self.con, name, self.avatarId)
 
     def getUIDNext(self, name):
         return getUIDNext(self.con, name, self.avatarId)    
@@ -80,9 +79,35 @@ class imapMailsMysql(object):
         nbSeen = nbTupleFilter(self.con, name, self.avatarId, r"\Seen")
         unSeen = nbTuple - nbSeen
         return unSeen
+        
     def getLastTuple(self, name):
         return getLastTuple(self.con, name, self.avatarId)
+        
+    def expunge(self, name):
+        pass
+    
+    def deleteFlags(self, name, idMail):
+        deleteFlags(self.con, name, self.avatarId, idMail)
 
+    def deleteFlag(self, name, idMail, flag):
+        deleteFlag(self.con, name, self.avatarId, idMail, flag)
+
+    def addFlag(self, idMail, flags):
+        print "imapMailsMysql"
+        addFlag(self.con, idMail, flags)
+
+    def getAllFlags(self):
+        return getAllFlags(self.con)
+
+    def getIdWithPosV(self, name, pos):
+        return getIdWithPosV(self.con, name, self.avatarId, pos)
+
+    def getPosWithIdV(self, name, idMail):
+        return getPosWithIdV(self.con, name, self.avatarId, idMail)
+        
+    def getLastPos(self, name):
+        return getLastPos(self.con, name, self.avatarId)
+        
 class MaildirMailboxPlus(object):
     #add an iterator to the mailbox.
     def __init__(self, con, name, avatarId):
@@ -163,14 +188,14 @@ class MailMessagePart(object):
 class MailMessage(MailMessagePart):
     implements(imap4.IMessage)
     
-    def __init__(self, mail, uid, flags):
+    def __init__(self, mail, idMail, flags):
         self.mail = str(mail)
-        self.uid = uid
+        self.idMail = idMail
         self.flags = flags
         self.mimeMessage = mail
     
     def getUID(self):
-        return self.uid
+        return self.idMail
     
     def getFlags(self):
         return self.flags

@@ -12,7 +12,7 @@ from cStringIO import StringIO
 from imapMailsMysql import imapMailsMysql
 import MySQLdb
  
-class userAccount(object):
+class account(object):
     implements(imap4.IAccount)
     
     def __init__(self, coreMail):
@@ -22,9 +22,8 @@ class userAccount(object):
     def addMailbox(self, name, mbox=None):
         self.coreMail.getNamedBox(name, create = True)
         
-    def create(self, pathspec):
-        nameBox = os.path.basename(pathspec)
-        self.coreMail.getNamedBox(nameBox, create = True)
+    def create(self, name):
+        return self.coreMail.getNamedBox(name, create = True)
         
     def select(self, name, rw=True):
         return self.coreMail.getNamedBox(name)
@@ -48,13 +47,12 @@ class userAccount(object):
     def listMailboxes(self, ref, wildcard):
         boxes = self.coreMail.allBoxes()
         for box in boxes:
-            print "box: %r" % box
-            yield box, self.coreMail.getNamedBox(box)
+            yield box, self.coreMail.getNamedBox(box, create=True)
 
 class mailRealm(object):
     implements(portal.IRealm)
     avatarInterfaces = {
-        imap4.IAccount: userAccount
+        imap4.IAccount: account
     }
     
     def __init__(self, coreMail):
