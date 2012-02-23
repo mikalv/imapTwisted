@@ -65,8 +65,8 @@ class imapMailsMysql(object):
     def getUIDNext(self, name):
         return getUIDNext(self.con, name, self.avatarId)    
        
-    def getUidWithPos(self, name, index):
-        return getUID(self.con, name, self.avatarId, index)
+    def getIdMailMessage(self, name, index):
+        return getIdMailMessage(self.con, name, self.avatarId, index)
     
     def getMessageCount(self, name):
         return nbTupleMail(self.con, name, self.avatarId)
@@ -93,7 +93,7 @@ class imapMailsMysql(object):
         deleteFlag(self.con, name, self.avatarId, idMail, flag)
 
     def addFlag(self, idMail, flags):
-        print "imapMailsMysql"
+        print "addFlag"
         addFlag(self.con, idMail, flags)
 
     def getAllFlags(self):
