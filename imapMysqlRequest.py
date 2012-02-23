@@ -363,42 +363,34 @@ def deleteFlag(con, name, avatarId, idMail, flag):
     cursor.execute(query)
 
 def getIdFlagWithName(con, name):
-    print "addFlag3"
     name = util.quote(name, "char")
     query = """
         SELECT id_flag
         FROM imap_flags
         WHERE name = %s
         """ % name
-    print query
     cursor = con.cursor()
     try:
         cursor.execute(query)
     except Exception:
-        print traceback.print_exc(file=sys.stdout)
+        print "le flag n'existe pas"
     results = cursor.fetchone()
-    print "results: ",
-    print results
     if results:
         results = int(str(results[0]))
     return results
 
 def addFlag(con, idMail, flag):
-    print "addFlag2"
     idFlag = getIdFlagWithName(con, flag)
-    print "idFlag: %d" % idFlag
     query = """
         INSERT INTO imap_message_flag
         (id_mail_message, id_flag)
         VALUES(%d, %d)
         """ % (idMail, idFlag)
-    print "query = %s" % query
     cursor = con.cursor()
     try:
         cursor.execute(query)
     except:
-        print "flag déja présent"
-        print traceback.print_exc(file=sys.stdout)
+        print "flag déja posé pour ce message"
 
 def getAllFlags(con):
     query = """
